@@ -646,9 +646,11 @@ class Front_End {
 			 */
 			do_action( 'softglaze_a11y_engine_fallback', $reason, $this->url_hash );
 
+			// The log keeps user ids of administrators only; a logged-in visitor's id is personal data the privacy text says is not collected.
 			$this->scanner->log()->add(
 				'engine_fallback',
 				array(
+					'user_id'  => current_user_can( 'manage_options' ) ? get_current_user_id() : 0,
 					'url_hash' => $this->url_hash,
 					'detail'   => $reason,
 				)

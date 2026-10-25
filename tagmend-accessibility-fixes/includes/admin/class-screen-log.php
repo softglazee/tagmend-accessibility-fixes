@@ -345,13 +345,13 @@ final class Screen_Log {
 	/**
 	 * Who made a change.
 	 *
-	 * @param int    $user_id User id (0 for WP-CLI and visitors).
+	 * @param int    $user_id User id (0 for WP-CLI and for visitors, logged in or not).
 	 * @param string $event   Event.
 	 * @return string
 	 */
 	private function user_label( int $user_id, string $event ): string {
 		if ( 0 === $user_id ) {
-			return 'engine_fallback' === $event ? __( 'Not logged in', 'tagmend-accessibility-fixes' ) : __( 'WP-CLI', 'tagmend-accessibility-fixes' );
+			return 'engine_fallback' === $event ? __( 'Visitor', 'tagmend-accessibility-fixes' ) : __( 'WP-CLI', 'tagmend-accessibility-fixes' );
 		}
 		if ( ! isset( $this->users[ $user_id ] ) ) {
 			$user                    = get_userdata( $user_id );

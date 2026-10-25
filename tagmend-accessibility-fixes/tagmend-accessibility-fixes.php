@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Tagmend – Accessibility Fixes
  * Description:       Accessibility fixes for theme, page builder and WooCommerce HTML: common WCAG failures repaired on your server. Preview each fix.
- * Version:           0.11.0
+ * Version:           1.0.0
  * Requires at least: 6.5
  * Requires PHP:      7.4
  * Author:            SoftGlaze
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SOFTGLAZE_A11Y_VERSION', '0.11.0' );
+define( 'SOFTGLAZE_A11Y_VERSION', '1.0.0' );
 define( 'SOFTGLAZE_A11Y_FILE', __FILE__ );
 define( 'SOFTGLAZE_A11Y_DIR', plugin_dir_path( __FILE__ ) );
 

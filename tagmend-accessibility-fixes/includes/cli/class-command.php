@@ -158,7 +158,7 @@ final class Command {
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp softglaze-a11y report https://example.com/cart/
+	 *     wp softglaze-a11y report https://example.com/?page_id=2
 	 *     wp softglaze-a11y report https://example.com/ --format=json
 	 *
 	 * @param array $args       Positional arguments: the URL.
