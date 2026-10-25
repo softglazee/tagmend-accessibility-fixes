@@ -12,7 +12,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Boots the plugin and wires its hooks.
+ * Boots the plugin and wires its hooks. Front-end hooks are not added at all
+ * when the SOFTGLAZE_A11Y_DISABLE kill switch is on.
  */
 final class Plugin {
 
@@ -29,6 +30,41 @@ final class Plugin {
 	private static $instance = null;
 
 	/**
+	 * Fix list.
+	 *
+	 * @var Registry
+	 */
+	private $registry;
+
+	/**
+	 * Settings.
+	 *
+	 * @var Settings
+	 */
+	private $settings;
+
+	/**
+	 * Request gate.
+	 *
+	 * @var Request_Gate
+	 */
+	private $gate;
+
+	/**
+	 * Front-end wiring.
+	 *
+	 * @var Front_End
+	 */
+	private $front_end;
+
+	/**
+	 * Fixes screen.
+	 *
+	 * @var Admin\Screen_Fixes
+	 */
+	private $fixes_screen;
+
+	/**
 	 * Returns the single instance, creating it on first use.
 	 *
 	 * @return Plugin
@@ -41,20 +77,78 @@ final class Plugin {
 	}
 
 	/**
-	 * Registers hooks.
+	 * Builds the components and registers hooks.
 	 */
 	private function __construct() {
+		$this->registry     = new Registry();
+		$this->settings     = new Settings( $this->registry );
+		$this->gate         = new Request_Gate( $this->settings );
+		$this->front_end    = new Front_End( $this->gate, $this->registry, $this->settings );
+		$this->fixes_screen = new Admin\Screen_Fixes( $this->registry, $this->settings );
+
+		register_activation_hook( SOFTGLAZE_A11Y_FILE, array( $this->settings, 'activate' ) );
+		add_action( 'init', array( $this->settings, 'register' ) );
+
 		if ( is_admin() ) {
 			add_action( 'admin_menu', array( $this, 'register_menu' ) );
+			$this->fixes_screen->register();
+		} elseif ( ! $this->gate->kill_switch() ) {
+			$this->front_end->register();
+			( new Admin\Admin_Bar( $this->settings, $this->gate ) )->register();
 		}
+
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			\WP_CLI::add_command( 'softglaze-a11y', Cli\Command::class );
 		}
-		// TODO(Phase 1B): request gate, settings, registry and the layer A, B and C wiring.
 	}
 
 	/**
-	 * Adds the top-level admin menu and its Overview page.
+	 * Fix list.
+	 *
+	 * @return Registry
+	 */
+	public function registry(): Registry {
+		return $this->registry;
+	}
+
+	/**
+	 * Settings.
+	 *
+	 * @return Settings
+	 */
+	public function settings(): Settings {
+		return $this->settings;
+	}
+
+	/**
+	 * Request gate.
+	 *
+	 * @return Request_Gate
+	 */
+	public function gate(): Request_Gate {
+		return $this->gate;
+	}
+
+	/**
+	 * Front-end wiring.
+	 *
+	 * @return Front_End
+	 */
+	public function front_end(): Front_End {
+		return $this->front_end;
+	}
+
+	/**
+	 * Fixes screen.
+	 *
+	 * @return Admin\Screen_Fixes
+	 */
+	public function fixes_screen(): Admin\Screen_Fixes {
+		return $this->fixes_screen;
+	}
+
+	/**
+	 * Adds the top-level admin menu, its Overview page and the Fixes page.
 	 *
 	 * @return void
 	 */
@@ -67,6 +161,15 @@ final class Plugin {
 			array( $this, 'render_overview' ),
 			'dashicons-universal-access-alt'
 		);
+		add_submenu_page(
+			self::MENU_SLUG,
+			__( 'Tagmend – Accessibility Fixes', 'tagmend-accessibility-fixes' ),
+			__( 'Overview', 'tagmend-accessibility-fixes' ),
+			'manage_options',
+			self::MENU_SLUG,
+			array( $this, 'render_overview' )
+		);
+		$this->fixes_screen->add_page( self::MENU_SLUG );
 	}
 
 	/**

@@ -8,9 +8,8 @@
 namespace SoftGlaze\AccessibilityRepair\Cli;
 
 use SoftGlaze\AccessibilityRepair\Engine;
-use SoftGlaze\AccessibilityRepair\Fixes\Fix_Html_Lang;
-use SoftGlaze\AccessibilityRepair\Fixes\Fix_Iframe_Title;
-use SoftGlaze\AccessibilityRepair\Fixes\Fix_Viewport_Zoom;
+use SoftGlaze\AccessibilityRepair\Plugin;
+use SoftGlaze\AccessibilityRepair\Registry;
 use WP_CLI;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Analyses saved HTML with the repair engine.
+ * Fix states, and analysis of saved HTML with the repair engine.
  */
 final class Command {
 
@@ -82,9 +81,8 @@ final class Command {
 			WP_CLI::error( 'The file could not be read: ' . $path );
 		}
 
-		// TODO(Phase 1B): fixes and saved states from the Registry (softglaze_a11y_register_fixes, softglaze_a11y_settings).
-		$fixes  = self::fixes();
-		$engine = new Engine( $fixes, Engine::default_states( $fixes ) );
+		$plugin = Plugin::instance();
+		$engine = new Engine( $plugin->registry()->fixes(), $plugin->settings()->fix_states() );
 		$engine->run( $html, Engine::MODE_SCAN, $scope );
 		// TODO(Phase 6A): --url and --save record the result as a report with source "cli".
 		$result = $engine->recorder()->to_array();
@@ -130,15 +128,135 @@ final class Command {
 	}
 
 	/**
-	 * The bundled fixes built so far.
+	 * Lists every fix with its saved state and whether it can run on this site.
 	 *
-	 * @return \SoftGlaze\AccessibilityRepair\Fix[]
+	 * ## OPTIONS
+	 *
+	 * [--format=<format>]
+	 * : Output format.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 *   - csv
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp softglaze-a11y status
+	 *     wp softglaze-a11y status --format=json
+	 *
+	 * @param array $args       Positional arguments (none).
+	 * @param array $assoc_args Named arguments.
+	 * @return void
 	 */
-	private static function fixes(): array {
-		return array(
-			new Fix_Iframe_Title(),
-			new Fix_Html_Lang(),
-			new Fix_Viewport_Zoom(),
-		);
+	public function status( $args, $assoc_args ) {
+		unset( $args );
+		$plugin   = Plugin::instance();
+		$registry = $plugin->registry();
+		$states   = $plugin->settings()->fix_states();
+		$format   = isset( $assoc_args['format'] ) && in_array( $assoc_args['format'], array( 'json', 'csv' ), true ) ? $assoc_args['format'] : 'table';
+
+		$rows = array();
+		foreach ( $registry->fixes() as $id => $fix ) {
+			$reason = $registry->unavailable_reason( $fix );
+			$rows[] = array(
+				'id'          => $id,
+				'state'       => isset( $states[ $id ] ) ? $states[ $id ] : 'off',
+				'available'   => '' === $reason ? 'yes' : $reason,
+				'scopes'      => implode( ',', $fix->scopes() ),
+				'recommended' => $fix->recommended() ? 'yes' : 'no',
+				'label'       => $fix->label(),
+			);
+		}
+		\WP_CLI\Utils\format_items( $format, $rows, array( 'id', 'state', 'available', 'scopes', 'recommended', 'label' ) );
+
+		if ( 'table' === $format ) {
+			if ( ! Registry::page_pass_exists() ) {
+				$page_pass = 'Needs WordPress 6.9 or later';
+			} elseif ( ! $plugin->settings()->page_scope_enabled() ) {
+				$page_pass = 'switched off in Settings';
+			} else {
+				$page_pass = 'available';
+			}
+			WP_CLI::line( 'Whole-page pass: ' . $page_pass );
+		}
+	}
+
+	/**
+	 * Sets the state of one or more fixes.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [<ids>]
+	 * : One fix id, or several separated by commas.
+	 *
+	 * [--all]
+	 * : Every registered fix. With --state=live, fixes that cannot run on this site are skipped with a warning.
+	 *
+	 * --state=<state>
+	 * : The new state: off, preview or live.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp softglaze-a11y fix iframe-title,html-lang --state=live
+	 *     wp softglaze-a11y fix --all --state=preview
+	 *
+	 * @param array $args       Positional arguments: the ids.
+	 * @param array $assoc_args Named arguments.
+	 * @return void
+	 */
+	public function fix( $args, $assoc_args ) {
+		$plugin   = Plugin::instance();
+		$registry = $plugin->registry();
+		$settings = $plugin->settings();
+		$state    = isset( $assoc_args['state'] ) ? (string) $assoc_args['state'] : '';
+		$all      = ! empty( $assoc_args['all'] );
+		$listed   = isset( $args[0] ) && '' !== trim( (string) $args[0] );
+
+		if ( ! in_array( $state, Engine::STATES, true ) ) {
+			WP_CLI::error( 'Unknown state. Use off, preview or live.' );
+		}
+		if ( $all === $listed ) {
+			WP_CLI::error( 'Name one or more fix ids, or use --all (not both).' );
+		}
+
+		$ids     = $all ? $registry->ids() : array_values( array_filter( array_map( 'trim', explode( ',', (string) $args[0] ) ) ) );
+		$unknown = array_diff( $ids, $registry->ids() );
+		if ( ! empty( $unknown ) ) {
+			WP_CLI::error( 'Unknown fix id: ' . implode( ', ', $unknown ) . '. Nothing was changed. Run "wp softglaze-a11y status" for the list.' );
+		}
+
+		$before = $settings->fix_states();
+		$wanted = array();
+		foreach ( $ids as $id ) {
+			$reason = $registry->unavailable_reason( $registry->get( $id ) );
+			if ( 'live' === $state && '' !== $reason && 'live' !== $before[ $id ] ) {
+				if ( ! $all ) {
+					WP_CLI::error( $id . ': ' . $reason . '. Nothing was changed.' );
+				}
+				WP_CLI::warning( $id . ': ' . $reason . '. Skipped.' );
+				continue;
+			}
+			$wanted[ $id ] = $state;
+		}
+
+		$rejected = empty( $wanted ) ? array() : $settings->save_fix_states( $wanted, 0 );
+		$after    = $settings->fix_states();
+		$changed  = 0;
+		foreach ( array_keys( $wanted ) as $id ) {
+			if ( $before[ $id ] !== $after[ $id ] ) {
+				WP_CLI::line( sprintf( '%1$s: %2$s -> %3$s', $id, $before[ $id ], $after[ $id ] ) );
+				++$changed;
+			}
+		}
+		foreach ( $rejected as $entry ) {
+			WP_CLI::warning( sprintf( 'Refused: %1$s (%2$s).', $entry['id'], $entry['reason'] ) );
+		}
+		if ( ! empty( $rejected ) ) {
+			WP_CLI::error( 'Some states were refused and kept their saved value.' );
+		}
+		WP_CLI::success( sprintf( '%d fix state(s) changed.', $changed ) );
 	}
 }

@@ -71,7 +71,6 @@ final class Fix_Html_Lang extends Fix_Base {
 	 * @return string[]
 	 */
 	public function scopes(): array {
-		// TODO(Phase 1B): the language_attributes hook (attribute scope).
 		return array( 'attribute', 'page' );
 	}
 
