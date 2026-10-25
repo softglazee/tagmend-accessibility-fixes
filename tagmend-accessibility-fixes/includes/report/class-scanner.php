@@ -173,6 +173,18 @@ final class Scanner {
 	}
 
 	/**
+	 * Whether a URL from validate_target() is on a "Never repair these paths"
+	 * prefix. The gate refuses such requests, so a scan of one stores nothing.
+	 *
+	 * @param string $url Absolute URL on this site.
+	 * @return bool
+	 */
+	public function is_excluded( string $url ): bool {
+		$path = wp_parse_url( $url, PHP_URL_PATH );
+		return $this->gate->path_is_excluded( Request_Gate::relative_path( is_string( $path ) ? $path : '/' ) );
+	}
+
+	/**
 	 * A scan link: the URL with softglaze_a11y_scan=1 and a fresh nonce for
 	 * the current user's session.
 	 *

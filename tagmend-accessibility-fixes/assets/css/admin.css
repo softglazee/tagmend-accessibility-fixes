@@ -1,0 +1,188 @@
+/*
+ * Tagmend admin screens (Reports, Report details, Activity log).
+ * Navy is used for text and primary accents, gold for borders only (it is
+ * too light for text on white).
+ */
+.softglaze-a11y-screen {
+	--softglaze-a11y-navy: #0f3057;
+	--softglaze-a11y-gold: #e8b64c;
+	--softglaze-a11y-panel: #ffffff;
+	--softglaze-a11y-line: #c3c4c7;
+}
+
+.softglaze-a11y-scan {
+	margin: 16px 0 24px;
+	padding: 12px 16px;
+	background: var(--softglaze-a11y-panel);
+	border: 1px solid var(--softglaze-a11y-line);
+	border-left: 4px solid var(--softglaze-a11y-gold);
+	max-width: 960px;
+}
+
+.softglaze-a11y-scan h2 {
+	margin-top: 0.5em;
+	color: var(--softglaze-a11y-navy);
+}
+
+.softglaze-a11y-scan-buttons .button {
+	margin: 0 8px 8px 0;
+}
+
+.softglaze-a11y-scan-url label {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 600;
+}
+
+.softglaze-a11y-scan-url-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.softglaze-a11y-scan-url-row input[type="url"] {
+	flex: 1 1 280px;
+	max-width: 100%;
+	margin: 0;
+}
+
+.softglaze-a11y-scan-status:not(:empty) {
+	margin: 12px 0 0;
+	padding: 8px 12px;
+	border-left: 4px solid var(--softglaze-a11y-navy);
+	background: #f6f7f7;
+	color: var(--softglaze-a11y-navy);
+}
+
+.softglaze-a11y-scan-results {
+	margin: 12px 0 0 1.5em;
+	list-style: disc;
+}
+
+.softglaze-a11y-scan-results li,
+.softglaze-a11y-report-url,
+.softglaze-a11y-scan-url-text,
+.softglaze-a11y-screen .column-url,
+.softglaze-a11y-screen .column-page {
+	overflow-wrap: anywhere;
+}
+
+.softglaze-a11y-changes td,
+.softglaze-a11y-findings td {
+	overflow-wrap: break-word;
+}
+
+@media screen and (min-width: 783px) {
+	.softglaze-a11y-screen .wp-list-table .column-url {
+		width: 30%;
+	}
+
+	.softglaze-a11y-screen .wp-list-table .column-detail {
+		width: 25%;
+	}
+}
+
+.softglaze-a11y-scan-url-text {
+	font-weight: 600;
+}
+
+.softglaze-a11y-details h2 {
+	margin-top: 2em;
+	color: var(--softglaze-a11y-navy);
+}
+
+.softglaze-a11y-details h3 {
+	margin: 1.5em 0 0.5em;
+}
+
+.softglaze-a11y-report-url {
+	font-size: 14px;
+}
+
+.softglaze-a11y-facts {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 4px 16px;
+	margin: 12px 0;
+	max-width: 640px;
+}
+
+.softglaze-a11y-facts dt {
+	font-weight: 600;
+}
+
+.softglaze-a11y-facts dd {
+	margin: 0;
+}
+
+.softglaze-a11y-notes {
+	max-width: 960px;
+	padding: 4px 16px;
+	background: var(--softglaze-a11y-panel);
+	border: 1px solid var(--softglaze-a11y-line);
+	border-left: 4px solid var(--softglaze-a11y-gold);
+}
+
+.softglaze-a11y-links .button {
+	margin: 0 8px 8px 0;
+}
+
+.softglaze-a11y-fix,
+.softglaze-a11y-check {
+	max-width: 1200px;
+}
+
+.softglaze-a11y-changes,
+.softglaze-a11y-findings {
+	table-layout: auto;
+}
+
+.softglaze-a11y-changes code,
+.softglaze-a11y-findings code {
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.softglaze-a11y-fix-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 8px 0 0;
+}
+
+.softglaze-a11y-fix-actions form {
+	margin: 0;
+}
+
+.softglaze-a11y-not-checked {
+	list-style: disc;
+	margin-left: 1.5em;
+}
+
+.softglaze-a11y-export {
+	margin: 12px 0;
+}
+
+.softglaze-a11y-status:focus {
+	outline: 2px solid var(--softglaze-a11y-navy);
+	outline-offset: 2px;
+}
+
+@media screen and (max-width: 782px) {
+	.softglaze-a11y-facts {
+		grid-template-columns: 1fr;
+	}
+
+	.softglaze-a11y-facts dd {
+		margin-bottom: 8px;
+	}
+
+	.softglaze-a11y-changes th,
+	.softglaze-a11y-changes td,
+	.softglaze-a11y-findings th,
+	.softglaze-a11y-findings td {
+		padding: 6px 4px;
+		font-size: 13px;
+	}
+}

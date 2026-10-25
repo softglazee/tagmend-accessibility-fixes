@@ -197,13 +197,41 @@ class Request_Gate {
 	 */
 	public function request_path(): string {
 		$path = wp_parse_url( $this->request_uri(), PHP_URL_PATH );
-		$path = is_string( $path ) ? rawurldecode( $path ) : '/';
+		return self::relative_path( is_string( $path ) ? $path : '/' );
+	}
+
+	/**
+	 * A URL path (percent-encoded, as in a request) made relative to the
+	 * site's home path, decoded, always starting with "/".
+	 *
+	 * @param string $path URL path.
+	 * @return string
+	 */
+	public static function relative_path( string $path ): string {
+		$path = rawurldecode( $path );
 		$home = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
 		$home = is_string( $home ) ? $home : '/';
 		if ( '/' !== $home && 0 === strpos( $path, $home ) ) {
 			$path = '/' . substr( $path, strlen( $home ) );
 		}
 		return '' === $path || '/' !== $path[0] ? '/' . $path : $path;
+	}
+
+	/**
+	 * Whether a path relative to the home path (see relative_path()) starts
+	 * with one of the "Never repair these paths" prefixes. Requests on such
+	 * paths are refused by the gate, so scanning them stores nothing.
+	 *
+	 * @param string $path Relative path.
+	 * @return bool
+	 */
+	public function path_is_excluded( string $path ): bool {
+		foreach ( $this->settings->exclude_paths() as $prefix ) {
+			if ( '' !== $prefix && 0 === strpos( $path, $prefix ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -400,17 +428,10 @@ class Request_Gate {
 	 * @return bool
 	 */
 	private function is_excluded_path(): bool {
-		$prefixes = $this->settings->exclude_paths();
-		if ( empty( $prefixes ) ) {
+		if ( empty( $this->settings->exclude_paths() ) ) {
 			return false;
 		}
-		$path = $this->request_path();
-		foreach ( $prefixes as $prefix ) {
-			if ( '' !== $prefix && 0 === strpos( $path, $prefix ) ) {
-				return true;
-			}
-		}
-		return false;
+		return $this->path_is_excluded( $this->request_path() );
 	}
 
 	/**

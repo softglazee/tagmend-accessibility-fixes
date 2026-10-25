@@ -29,7 +29,15 @@ final class Log_Store {
 	/**
 	 * Events this version writes. Others are refused.
 	 */
-	const EVENTS = array( 'plugin_activated', 'fix_state_changed', 'scan', 'engine_fallback' );
+	const EVENTS = array( 'plugin_activated', 'fix_state_changed', 'scan', 'engine_fallback', 'fix_skip_added', 'fix_skip_removed' );
+
+	/**
+	 * Sort keys of the Activity log screen and the column each one orders by.
+	 */
+	const SORT_COLUMNS = array(
+		'date'  => 'id',
+		'event' => 'event',
+	);
 
 	/**
 	 * Rows kept.
@@ -127,6 +135,56 @@ final class Log_Store {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own log table, read on demand.
 		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i ORDER BY id DESC LIMIT %d', self::table_name(), max( 1, $limit ) ), ARRAY_A );
 		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * One page of log rows, each with the URL of the page its URL hash
+	 * belongs to while that page still has a report ('page_url', or null).
+	 * The event is compared as a value; the sort key is looked up in
+	 * SORT_COLUMNS (anything else sorts by date) and the direction is one of
+	 * two literals, so no request value becomes part of the query text.
+	 *
+	 * @param string $event    One of EVENTS, or '' for every event.
+	 * @param string $orderby  Key of SORT_COLUMNS.
+	 * @param string $order    'asc' or 'desc'.
+	 * @param int    $per_page Rows per page.
+	 * @param int    $offset   Rows to skip.
+	 * @return array[]
+	 */
+	public function page( string $event, string $orderby, string $order, int $per_page, int $offset ): array {
+		global $wpdb;
+		if ( ! Install::ready() ) {
+			return array();
+		}
+		$event    = in_array( $event, self::EVENTS, true ) ? $event : '';
+		$column   = isset( self::SORT_COLUMNS[ $orderby ] ) ? self::SORT_COLUMNS[ $orderby ] : self::SORT_COLUMNS['date'];
+		$per_page = max( 1, $per_page );
+		$offset   = max( 0, $offset );
+		$pages    = Pages_Store::table_name();
+		if ( 'asc' === $order ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own tables, read on demand.
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT l.*, p.url AS page_url FROM %i AS l LEFT JOIN %i AS p ON p.url_hash = l.url_hash AND l.url_hash <> '' WHERE ( %s = '' OR l.event = %s ) ORDER BY l.%i ASC, l.id ASC LIMIT %d OFFSET %d", self::table_name(), $pages, $event, $event, $column, $per_page, $offset ), ARRAY_A );
+		} else {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own tables, read on demand.
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT l.*, p.url AS page_url FROM %i AS l LEFT JOIN %i AS p ON p.url_hash = l.url_hash AND l.url_hash <> '' WHERE ( %s = '' OR l.event = %s ) ORDER BY l.%i DESC, l.id DESC LIMIT %d OFFSET %d", self::table_name(), $pages, $event, $event, $column, $per_page, $offset ), ARRAY_A );
+		}
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Number of rows of one event, or of every event.
+	 *
+	 * @param string $event One of EVENTS, or '' for every event.
+	 * @return int
+	 */
+	public function count_event( string $event ): int {
+		global $wpdb;
+		if ( ! Install::ready() ) {
+			return 0;
+		}
+		$event = in_array( $event, self::EVENTS, true ) ? $event : '';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own log table, read on demand.
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE ( %s = '' OR event = %s )", self::table_name(), $event, $event ) );
 	}
 
 	/**

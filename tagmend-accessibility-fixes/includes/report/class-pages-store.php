@@ -53,6 +53,16 @@ final class Pages_Store {
 	const ENGINE_KEYS = array( 'scope', 'scope_reason', 'mode', 'ms', 'bytes', 'runs', 'fallback', 'fallbacks', 'wp', 'version' );
 
 	/**
+	 * Sort keys of the Reports screen and the column each one orders by.
+	 */
+	const SORT_COLUMNS = array(
+		'url'      => 'url',
+		'scanned'  => 'id',
+		'live'     => 'changes_live',
+		'findings' => 'findings',
+	);
+
+	/**
 	 * Rows kept.
 	 *
 	 * @var int
@@ -170,6 +180,51 @@ final class Pages_Store {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own report table, read on demand.
 		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT id, url_hash, url, object_id, object_type, source, scanned_gmt, html_bytes, engine_us, changes_live, changes_preview, changes_off, findings FROM %i ORDER BY id DESC LIMIT %d', self::table_name(), max( 1, $limit ) ), ARRAY_A );
 		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * One page of reports for the Reports screen, without their result
+	 * column. The sort key is looked up in SORT_COLUMNS (anything else sorts
+	 * by date) and the direction is one of two literals, so no request value
+	 * reaches the query.
+	 *
+	 * @param string $orderby  Key of SORT_COLUMNS.
+	 * @param string $order    'asc' or 'desc'.
+	 * @param int    $per_page Rows per page.
+	 * @param int    $offset   Rows to skip.
+	 * @return array[]
+	 */
+	public function page( string $orderby, string $order, int $per_page, int $offset ): array {
+		global $wpdb;
+		if ( ! Install::ready() ) {
+			return array();
+		}
+		$column   = isset( self::SORT_COLUMNS[ $orderby ] ) ? self::SORT_COLUMNS[ $orderby ] : self::SORT_COLUMNS['scanned'];
+		$per_page = max( 1, $per_page );
+		$offset   = max( 0, $offset );
+		if ( 'asc' === $order ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own report table, read on demand.
+			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT id, url_hash, url, object_id, object_type, source, scanned_gmt, html_bytes, engine_us, changes_live, changes_preview, changes_off, findings FROM %i ORDER BY %i ASC, id ASC LIMIT %d OFFSET %d', self::table_name(), $column, $per_page, $offset ), ARRAY_A );
+		} else {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own report table, read on demand.
+			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT id, url_hash, url, object_id, object_type, source, scanned_gmt, html_bytes, engine_us, changes_live, changes_preview, changes_off, findings FROM %i ORDER BY %i DESC, id DESC LIMIT %d OFFSET %d', self::table_name(), $column, $per_page, $offset ), ARRAY_A );
+		}
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
+	 * Deletes the report of one URL.
+	 *
+	 * @param string $hash URL hash.
+	 * @return bool Whether a row was deleted.
+	 */
+	public function delete_by_hash( string $hash ): bool {
+		global $wpdb;
+		if ( 1 !== preg_match( '/^[0-9a-f]{64}$/', $hash ) || ! Install::ready() ) {
+			return false;
+		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own report table.
+		return 1 === (int) $wpdb->delete( self::table_name(), array( 'url_hash' => $hash ), array( '%s' ) );
 	}
 
 	/**

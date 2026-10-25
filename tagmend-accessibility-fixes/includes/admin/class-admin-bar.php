@@ -21,7 +21,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * page (N)" and "Scan this page" for the current page (blueprint section
  * 10.2). The view links carry a nonce for the softglaze_a11y_view action,
  * the scan link one for softglaze_a11y_scan. N is the number of Live and
- * Preview changes in the last stored report of this URL. Front end only,
+ * Preview changes in the last stored report of this URL, and the item links
+ * to that report's details. Front end only,
  * users who can manage options only, no CSS or JavaScript. During a scan the
  * admin bar is switched off, so the node is not shown.
  */
@@ -138,14 +139,15 @@ final class Admin_Bar {
 				),
 			)
 		);
-		// TODO(Phase 6B): link this item to the Report details screen of this URL.
-		$admin_bar->add_node(
-			array(
-				'parent' => self::NODE,
-				'id'     => self::NODE . '-changes',
-				'title'  => $changes_title_escaped,
-			)
+		$changes = array(
+			'parent' => self::NODE,
+			'id'     => self::NODE . '-changes',
+			'title'  => $changes_title_escaped,
 		);
+		if ( null !== $report ) {
+			$changes['href'] = Screen_Reports::details_url( (string) $report['url_hash'] );
+		}
+		$admin_bar->add_node( $changes );
 		$admin_bar->add_node(
 			array(
 				'parent' => self::NODE,

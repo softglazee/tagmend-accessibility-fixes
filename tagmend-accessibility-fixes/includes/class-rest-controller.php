@@ -21,7 +21,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * - POST scan-targets: keeps only URLs on this site (scheme, host and port
  *   of home_url()) and returns each with the scan arg and a fresh nonce, so
- *   the administrator's browser can scan them; anything else is a 400.
+ *   the administrator's browser can scan them; anything else is a 400. A
+ *   target on a "Never repair these paths" prefix is marked excluded: the
+ *   gate refuses it, so scanning it would store nothing.
  * - GET report?url=: the stored summary for one URL (counts only).
  *
  * The routes declare no required flag and no validate callback, and their
@@ -145,6 +147,7 @@ final class Rest_Controller {
 			$targets[] = array(
 				'url'      => $clean,
 				'scan_url' => $this->scanner->scan_url( $clean ),
+				'excluded' => $this->scanner->is_excluded( $clean ),
 			);
 		}
 		if ( ! empty( $rejected ) ) {

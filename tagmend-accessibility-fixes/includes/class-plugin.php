@@ -93,6 +93,30 @@ final class Plugin {
 	private $install;
 
 	/**
+	 * Reports screen (with the report details view).
+	 *
+	 * @var Admin\Screen_Reports
+	 */
+	private $reports_screen;
+
+	/**
+	 * Activity log screen.
+	 *
+	 * @var Admin\Screen_Log
+	 */
+	private $log_screen;
+
+	/**
+	 * Hook suffixes of the screens that load admin.css, and of the one that also loads admin.js.
+	 *
+	 * @var array
+	 */
+	private $asset_hooks = array(
+		'css' => array(),
+		'js'  => array(),
+	);
+
+	/**
 	 * Returns the single instance, creating it on first use.
 	 *
 	 * @return Plugin
@@ -118,6 +142,10 @@ final class Plugin {
 		$this->fixes_screen = new Admin\Screen_Fixes( $this->registry, $this->settings );
 		$this->install      = new Install( $this->settings, $this->log );
 
+		$details              = new Admin\Screen_Report_Details( $this->registry, $this->settings, $this->scanner, $this->log );
+		$this->reports_screen = new Admin\Screen_Reports( $this->scanner, $details );
+		$this->log_screen     = new Admin\Screen_Log( $this->registry, $this->log );
+
 		register_activation_hook( SOFTGLAZE_A11Y_FILE, array( $this->install, 'activate' ) );
 		add_action( 'init', array( $this->settings, 'register' ) );
 		add_action( 'softglaze_a11y_fix_state_changed', array( $this->log, 'record_state_change' ), 10, 4 );
@@ -125,7 +153,10 @@ final class Plugin {
 
 		if ( is_admin() ) {
 			add_action( 'admin_menu', array( $this, 'register_menu' ) );
+			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 			$this->fixes_screen->register();
+			$this->reports_screen->register();
+			$this->log_screen->register();
 			$this->install->register();
 		} elseif ( ! $this->gate->kill_switch() ) {
 			$this->front_end->register();
@@ -219,7 +250,25 @@ final class Plugin {
 	}
 
 	/**
-	 * Adds the top-level admin menu, its Overview page and the Fixes page.
+	 * Reports screen.
+	 *
+	 * @return Admin\Screen_Reports
+	 */
+	public function reports_screen(): Admin\Screen_Reports {
+		return $this->reports_screen;
+	}
+
+	/**
+	 * Activity log screen.
+	 *
+	 * @return Admin\Screen_Log
+	 */
+	public function log_screen(): Admin\Screen_Log {
+		return $this->log_screen;
+	}
+
+	/**
+	 * Adds the top-level admin menu and its Overview, Fixes, Reports and Activity log pages.
 	 *
 	 * @return void
 	 */
@@ -241,6 +290,34 @@ final class Plugin {
 			array( $this, 'render_overview' )
 		);
 		$this->fixes_screen->add_page( self::MENU_SLUG );
+		$reports = $this->reports_screen->add_page( self::MENU_SLUG );
+		$log     = $this->log_screen->add_page( self::MENU_SLUG );
+		// TODO(Phase 7): the Settings page.
+
+		$this->asset_hooks = array(
+			'css' => array_values( array_filter( array( $reports, $log ) ) ),
+			'js'  => array_values( array_filter( array( $reports ) ) ),
+		);
+	}
+
+	/**
+	 * Loads admin.css on the Reports and Activity log screens and admin.js
+	 * (scans, through wp-api-fetch; translations through wp-i18n) on the
+	 * Reports screen only. Nothing is printed inline: admin.js reads its data
+	 * from data-* attributes.
+	 *
+	 * @param string $hook_suffix Current admin screen.
+	 * @return void
+	 */
+	public function enqueue_admin_assets( $hook_suffix ) {
+		if ( ! is_string( $hook_suffix ) || ! in_array( $hook_suffix, $this->asset_hooks['css'], true ) ) {
+			return;
+		}
+		wp_enqueue_style( 'softglaze-a11y-admin', plugins_url( 'assets/css/admin.css', SOFTGLAZE_A11Y_FILE ), array(), SOFTGLAZE_A11Y_VERSION );
+		if ( in_array( $hook_suffix, $this->asset_hooks['js'], true ) ) {
+			wp_enqueue_script( 'softglaze-a11y-admin', plugins_url( 'assets/js/admin.js', SOFTGLAZE_A11Y_FILE ), array( 'wp-api-fetch', 'wp-i18n' ), SOFTGLAZE_A11Y_VERSION, true );
+			wp_set_script_translations( 'softglaze-a11y-admin', 'tagmend-accessibility-fixes' );
+		}
 	}
 
 	/**
