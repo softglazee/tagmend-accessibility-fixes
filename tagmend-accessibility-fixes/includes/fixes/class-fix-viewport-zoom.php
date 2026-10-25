@@ -42,6 +42,15 @@ final class Fix_Viewport_Zoom extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Removes user-scalable=no and a maximum-scale below 2 from the viewport tag, so visitors can zoom the page on phones and tablets.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

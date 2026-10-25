@@ -137,6 +137,15 @@ final class Fix_Skip_Link extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Adds a "Skip to content" link at the start of pages that have none, pointing at the main content; it shows when it receives keyboard focus. Nothing is added where WordPress or the theme already prints a skip link.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]
@@ -224,6 +233,16 @@ final class Fix_Skip_Link extends Fix_Base {
 	 */
 	public static function link_text(): string {
 		return __( 'Skip to content', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
+	 * The opening tag Front_End::print_skip_link() prints, escaped as it is
+	 * built, so the printed link can be found again when the page pass falls back.
+	 *
+	 * @return string
+	 */
+	public static function printed_opener(): string {
+		return '<a class="' . esc_attr( self::LINK_CLASS ) . ' screen-reader-text" href="' . esc_url( '#' . self::TARGET_ID ) . '">';
 	}
 
 	/**

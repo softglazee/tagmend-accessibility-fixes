@@ -52,6 +52,15 @@ class Fix_Product_Img_Alt_Name extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'On a single product page, uses the product name as alt text for the images of that product when their Media Library alt text is empty. Starts Off because every gallery image of a product gets the same text.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

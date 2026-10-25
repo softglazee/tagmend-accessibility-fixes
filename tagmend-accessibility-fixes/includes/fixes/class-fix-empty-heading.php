@@ -67,6 +67,15 @@ final class Fix_Empty_Heading extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Hides headings that have no text from screen readers. A heading whose removal would leave a gap in the heading levels stays and is listed in the report.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

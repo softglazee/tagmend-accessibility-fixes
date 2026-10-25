@@ -141,6 +141,8 @@ final class Screen_Log {
 				return __( 'Fix skipped on a page', 'tagmend-accessibility-fixes' );
 			case 'fix_skip_removed':
 				return __( 'Fix runs on a page again', 'tagmend-accessibility-fixes' );
+			case 'settings_saved':
+				return __( 'Settings saved', 'tagmend-accessibility-fixes' );
 			default:
 				return $event;
 		}
@@ -428,9 +430,29 @@ final class Screen_Log {
 				return '';
 			case 'scan':
 				return self::scan_detail( $detail );
+			case 'settings_saved':
+				return self::settings_detail( $detail );
 			default:
 				return $detail;
 		}
+	}
+
+	/**
+	 * Readable detail of a settings_saved row (stored as changed=key,key).
+	 *
+	 * @param string $detail Stored detail.
+	 * @return string
+	 */
+	private static function settings_detail( string $detail ): string {
+		if ( 1 !== preg_match( '/^changed=([a-z_,]+)$/', $detail, $match ) ) {
+			return $detail;
+		}
+		$labels = array_map( array( Screen_Settings::class, 'key_label' ), explode( ',', $match[1] ) );
+		return sprintf(
+			/* translators: %s: names of the changed settings, separated by commas */
+			__( 'Changed: %s', 'tagmend-accessibility-fixes' ),
+			implode( ', ', $labels )
+		);
 	}
 
 	/**

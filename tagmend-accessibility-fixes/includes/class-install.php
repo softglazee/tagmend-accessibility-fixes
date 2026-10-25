@@ -59,15 +59,37 @@ final class Install {
 	}
 
 	/**
-	 * Activation: default settings when absent, both tables, one log row. No redirect.
+	 * Activation: default settings when absent, both tables, one log row. No
+	 * redirect. Network activation on a multisite install is refused before
+	 * anything is written (blueprint section 15): settings, tables and
+	 * reports belong to each site, so the plugin is activated per site.
 	 *
+	 * @param bool $network_wide Whether the plugin is being activated for the whole network.
 	 * @return void
 	 */
-	public function activate(): void {
+	public function activate( $network_wide = false ): void {
+		if ( $network_wide && is_multisite() ) {
+			wp_die(
+				esc_html( self::network_activation_message() ),
+				esc_html__( 'Tagmend – Accessibility Fixes', 'tagmend-accessibility-fixes' ),
+				array(
+					'response'  => 403,
+					'back_link' => true,
+				)
+			);
+		}
 		$this->settings->activate();
 		self::create_tables();
 		$this->log->add( 'plugin_activated', array( 'detail' => SOFTGLAZE_A11Y_VERSION ) );
-		// TODO(Phase 7): refuse network activation with a translated message.
+	}
+
+	/**
+	 * Why network activation is refused.
+	 *
+	 * @return string
+	 */
+	public static function network_activation_message(): string {
+		return __( 'Tagmend – Accessibility Fixes works on each site of a network separately, so it cannot be activated for the whole network. Activate it from the Plugins screen of each site where you want it.', 'tagmend-accessibility-fixes' );
 	}
 
 	/**

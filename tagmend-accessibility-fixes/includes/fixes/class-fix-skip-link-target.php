@@ -69,6 +69,15 @@ final class Fix_Skip_Link_Target extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Repairs an existing skip link whose target does not exist on the page, by pointing it at the main content.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

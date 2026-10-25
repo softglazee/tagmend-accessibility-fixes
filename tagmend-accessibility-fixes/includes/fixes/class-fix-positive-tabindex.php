@@ -45,6 +45,15 @@ final class Fix_Positive_Tabindex extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Sets tabindex values above 0 to 0, so the keyboard moves through the page in reading order.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

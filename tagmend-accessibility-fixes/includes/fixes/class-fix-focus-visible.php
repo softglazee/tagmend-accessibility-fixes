@@ -50,6 +50,15 @@ final class Fix_Focus_Visible extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Adds a small stylesheet that draws a 2-pixel outline in the text colour around the element that has keyboard focus. Starts Off because it changes how the site looks: set it to Preview, open a page with "View repaired" in the admin bar and press Tab to see the outline before you set it Live.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

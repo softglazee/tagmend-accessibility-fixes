@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Dated rows in {prefix}softglaze_a11y_log (blueprint sections 10.4 and 11):
- * fix state changes, scans, engine fallbacks and activation. Every value is
+ * fix state changes, scans, engine fallbacks, settings saves and activation. Every value is
  * validated before the insert, the table is capped on insert (oldest rows
  * trimmed), and nothing is written while the tables do not match this
  * version of the plugin.
@@ -29,7 +29,7 @@ final class Log_Store {
 	/**
 	 * Events this version writes. Others are refused.
 	 */
-	const EVENTS = array( 'plugin_activated', 'fix_state_changed', 'scan', 'engine_fallback', 'fix_skip_added', 'fix_skip_removed' );
+	const EVENTS = array( 'plugin_activated', 'fix_state_changed', 'scan', 'engine_fallback', 'fix_skip_added', 'fix_skip_removed', 'settings_saved' );
 
 	/**
 	 * Sort keys of the Activity log screen and the column each one orders by.
@@ -185,6 +185,28 @@ final class Log_Store {
 		$event = in_array( $event, self::EVENTS, true ) ? $event : '';
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own log table, read on demand.
 		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE ( %s = '' OR event = %s )", self::table_name(), $event, $event ) );
+	}
+
+	/**
+	 * Rows of one event written since a date, counted by their stored detail
+	 * (for engine_fallback rows the detail is the reason).
+	 *
+	 * @param string $event     One of EVENTS.
+	 * @param string $since_gmt Date as Y-m-d H:i:s, GMT.
+	 * @return int[] Detail => rows, largest first.
+	 */
+	public function details_since( string $event, string $since_gmt ): array {
+		global $wpdb;
+		if ( ! Install::ready() || ! in_array( $event, self::EVENTS, true ) || 1 !== preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $since_gmt ) ) {
+			return array();
+		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The plugin's own log table, read on demand.
+		$rows   = $wpdb->get_results( $wpdb->prepare( 'SELECT detail, COUNT(*) AS rows_found FROM %i WHERE event = %s AND created_gmt >= %s GROUP BY detail ORDER BY rows_found DESC, detail ASC', self::table_name(), $event, $since_gmt ), ARRAY_A );
+		$counts = array();
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$counts[ (string) $row['detail'] ] = (int) $row['rows_found'];
+		}
+		return $counts;
 	}
 
 	/**

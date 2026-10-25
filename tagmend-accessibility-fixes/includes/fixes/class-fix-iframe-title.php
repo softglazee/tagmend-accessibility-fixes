@@ -42,6 +42,15 @@ final class Fix_Iframe_Title extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Gives embedded frames without a title one that names the service, such as "YouTube video", or "Embedded content from" followed by the host name.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

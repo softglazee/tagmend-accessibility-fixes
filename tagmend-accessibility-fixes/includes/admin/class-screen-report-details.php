@@ -152,7 +152,7 @@ final class Screen_Report_Details {
 			$states   = $this->settings->fix_states();
 			$status   = empty( $rejected ) && isset( $states[ $fix ] ) && 'live' === $states[ $fix ] ? 'live' : 'live_refused';
 		}
-		// TODO(Phase 7): name the detected page-cache plugin and remind the admin to purge it (decision D-05: reminder only).
+		// The "live" message names the detected page-cache plugin (Screen_Reports::print_status(), decision D-05).
 		return $this->back( $hash, $status );
 	}
 

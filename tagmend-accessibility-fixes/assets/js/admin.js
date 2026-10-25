@@ -1,5 +1,7 @@
 /**
- * Tagmend - Reports screen: scans in the administrator's own browser.
+ * Tagmend admin screens. On every screen: after a save or an action, focus
+ * moves to the inline status message. On the Reports screen and Report
+ * details: scans in the administrator's own browser.
  *
  * Flow (blueprint section 10.3): the candidate addresses go to the REST route
  * softglaze-a11y/v1/scan-targets, which keeps only pages of this site and

@@ -46,6 +46,15 @@ final class Fix_Nav_Labels extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Gives theme menus printed in a nav element the name of their menu location as aria-label, so screen-reader users can tell several menus apart.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

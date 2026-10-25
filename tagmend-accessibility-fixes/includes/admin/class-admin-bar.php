@@ -23,8 +23,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * the scan link one for softglaze_a11y_scan. N is the number of Live and
  * Preview changes in the last stored report of this URL, and the item links
  * to that report's details. Front end only,
- * users who can manage options only, no CSS or JavaScript. During a scan the
- * admin bar is switched off, so the node is not shown.
+ * users who can manage options only, no CSS or JavaScript; Settings can
+ * switch the node off. During a scan the admin bar is switched off, so the
+ * node is not shown.
  */
 final class Admin_Bar {
 
@@ -156,6 +157,5 @@ final class Admin_Bar {
 				'href'   => $this->scanner->scan_url( $page_uri ),
 			)
 		);
-		// TODO(Phase 7): the Settings screen toggle for this node (the setting already exists).
 	}
 }

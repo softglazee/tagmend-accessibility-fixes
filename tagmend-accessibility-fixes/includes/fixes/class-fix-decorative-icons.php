@@ -70,6 +70,15 @@ final class Fix_Decorative_Icons extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Hides icon-font glyphs and unlabelled SVG images inside links and buttons that already have a name (aria-hidden="true"), so screen readers do not read them as stray characters.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

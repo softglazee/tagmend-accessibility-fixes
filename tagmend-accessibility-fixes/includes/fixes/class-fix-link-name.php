@@ -71,6 +71,15 @@ final class Fix_Link_Name extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Names links that have no text, such as logo, social, email, phone, cart and icon links, with an aria-label from a reliable source: the site name, the email address or phone number, the social network, the icon, or the cart or account page. Links it cannot name are listed in the report.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

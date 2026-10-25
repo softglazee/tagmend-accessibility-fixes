@@ -1,5 +1,5 @@
 /*
- * Tagmend admin screens (Reports, Report details, Activity log).
+ * Tagmend admin screens (Overview, Fixes, Reports, Report details, Activity log, Settings).
  * Navy is used for text and primary accents, gold for borders only (it is
  * too light for text on white).
  */
@@ -184,5 +184,141 @@
 	.softglaze-a11y-findings td {
 		padding: 6px 4px;
 		font-size: 13px;
+	}
+}
+
+/* Overview and Fixes panels. */
+.softglaze-a11y-overview .softglaze-a11y-facts {
+	max-width: 880px;
+}
+
+.softglaze-a11y-panel {
+	max-width: 960px;
+	margin: 16px 0 24px;
+	padding: 4px 16px 8px;
+	background: var(--softglaze-a11y-panel);
+	border: 1px solid var(--softglaze-a11y-line);
+	border-left: 4px solid var(--softglaze-a11y-gold);
+}
+
+.softglaze-a11y-panel h2,
+.softglaze-a11y-fix-group h2 {
+	color: var(--softglaze-a11y-navy);
+}
+
+.softglaze-a11y-lead {
+	max-width: 960px;
+	font-size: 14px;
+}
+
+.softglaze-a11y-steps ol {
+	margin-left: 1.5em;
+}
+
+.softglaze-a11y-steps li {
+	margin-bottom: 12px;
+}
+
+.softglaze-a11y-step-done {
+	font-weight: 600;
+}
+
+.softglaze-a11y-reasons {
+	list-style: disc;
+	margin: 4px 0 4px 1.5em;
+}
+
+.softglaze-a11y-recent li {
+	margin-bottom: 12px;
+}
+
+.softglaze-a11y-date {
+	display: block;
+	color: #50575e;
+}
+
+.softglaze-a11y-disclaimer {
+	font-weight: 600;
+}
+
+/* Fixes screen: one card per fix, grouped. */
+.softglaze-a11y-counts {
+	font-weight: 600;
+}
+
+.softglaze-a11y-fix-group {
+	max-width: 960px;
+	margin-top: 24px;
+}
+
+.softglaze-a11y-fix-card {
+	margin: 0 0 16px;
+	padding: 8px 16px 4px;
+	background: var(--softglaze-a11y-panel);
+	border: 1px solid var(--softglaze-a11y-line);
+	border-left: 4px solid var(--softglaze-a11y-gold);
+}
+
+.softglaze-a11y-fix-card legend {
+	padding: 0 4px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--softglaze-a11y-navy);
+}
+
+.softglaze-a11y-fix-states {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 24px;
+	margin: 4px 0 8px;
+}
+
+.softglaze-a11y-fix-states label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 24px;
+}
+
+.softglaze-a11y-fix-states input[type="radio"] {
+	margin: 0;
+}
+
+.softglaze-a11y-fix-meta {
+	list-style: disc;
+	margin: 0 0 8px 1.5em;
+	color: #3c434a;
+}
+
+.softglaze-a11y-fix-meta li {
+	margin-bottom: 2px;
+}
+
+.softglaze-a11y-confirm-list {
+	list-style: disc;
+	margin-left: 1.5em;
+}
+
+.softglaze-a11y-confirm-actions .button {
+	margin: 0 8px 8px 0;
+}
+
+.softglaze-a11y-screen a:focus,
+.softglaze-a11y-screen input:focus,
+.softglaze-a11y-screen textarea:focus,
+.softglaze-a11y-screen button:focus {
+	outline: 2px solid var(--softglaze-a11y-navy);
+	outline-offset: 2px;
+}
+
+@media screen and (max-width: 782px) {
+	.softglaze-a11y-fix-card,
+	.softglaze-a11y-panel {
+		padding-left: 12px;
+		padding-right: 12px;
+	}
+
+	.softglaze-a11y-fix-states {
+		gap: 4px 16px;
 	}
 }

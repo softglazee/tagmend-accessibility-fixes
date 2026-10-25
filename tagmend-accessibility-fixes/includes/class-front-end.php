@@ -238,6 +238,13 @@ class Front_End {
 	private $page_pass_vetoed = false;
 
 	/**
+	 * Fallback reason of the last engine run on this request, or null.
+	 *
+	 * @var string|null
+	 */
+	private $last_fallback = null;
+
+	/**
 	 * Creates the wiring.
 	 *
 	 * @param Request_Gate        $gate     Request gate.
@@ -403,8 +410,7 @@ class Front_End {
 			$this->skip_link_hooked = false;
 		}
 
-		// Scans and admin views record that they saw content fragments only (never remembered on a visitor request, D8).
-		// TODO(Phase 7): tell the administrator on the Overview when scans show that the page pass could not run.
+		// Scans and admin views record that they saw content fragments only (never remembered on a visitor request, D8); the Overview reads it.
 		$this->scanner->set_scope( Engine::SCOPE_CONTENT, Report\Scanner::REASON_PAGE_BUFFER_OFF );
 		$mode = $this->gate->mode();
 		if ( Engine::MODE_SCAN === $mode || $this->needs_scope( Engine::SCOPE_CONTENT, Engine::MODE_STATES[ $mode ]['apply'] ) ) {
@@ -590,6 +596,9 @@ class Front_End {
 	 * Layer C: repairs the whole page. Works on the first argument (the output
 	 * of earlier callbacks, including core's own) and returns it unchanged on
 	 * any fallback; the second argument is never returned (blueprint section 2.4).
+	 * The one exception is the plugin's own skip link: when the run falls
+	 * back, the link F11 printed would point at an id nobody added, so it
+	 * gets hidden (hide_printed_skip_link()).
 	 *
 	 * @param string $filtered_output Output of earlier callbacks.
 	 * @param string $output          Raw template output (unused).
@@ -604,8 +613,10 @@ class Front_End {
 		if ( $this->skip_link_hooked && ! $this->skip_link_done && 0 === did_action( 'wp_body_open' ) && $skip_link instanceof Fixes\Fix_Skip_Link ) {
 			$skip_link->set_printer( Fixes\Fix_Skip_Link::PRINTER_NO_HOOK );
 		}
-		// TODO(Phase 7): when this run falls back (size, time), F11's printed link keeps href="#softglaze-a11y-main" without a target.
 		$repaired = $this->repair( $filtered_output, Engine::SCOPE_PAGE );
+		if ( null !== $this->last_fallback && $repaired === $filtered_output ) {
+			$repaired = $this->hide_printed_skip_link( $filtered_output );
+		}
 		if ( $this->gate->is_admin_view() ) {
 			$this->send_server_timing();
 		}
@@ -751,6 +762,7 @@ class Front_End {
 		$this->skip_link_hooked = false;
 		$this->skip_link_done   = false;
 		$this->page_pass_vetoed = false;
+		$this->last_fallback    = null;
 		$this->scanner->reset();
 		$fix = $this->registry->get( 'new-tab-note' );
 		if ( $fix instanceof Fixes\Fix_New_Tab_Note ) {
@@ -859,6 +871,7 @@ class Front_End {
 	 * @return string
 	 */
 	private function repair( string $html, string $scope ): string {
+		$this->last_fallback = null;
 		try {
 			$engine   = $this->engine();
 			$output   = $engine->run( $html, $this->gate->mode(), $scope );
@@ -869,6 +882,7 @@ class Front_End {
 			$this->engine_ms += isset( $facts['ms'] ) ? (float) $facts['ms'] : 0.0;
 			if ( null !== $reason ) {
 				$this->fallbacks[ sanitize_key( $reason ) ] = true;
+				$this->last_fallback                        = sanitize_key( $reason );
 			}
 			$counts = $recorder->counts();
 			$state  = $this->state_of( 'new-tab-note' );
@@ -881,6 +895,43 @@ class Front_End {
 			return $output;
 		} catch ( Throwable $throwable ) {
 			$this->fallbacks['exception'] = true;
+			$this->last_fallback          = 'exception';
+			return $html;
+		}
+	}
+
+	/**
+	 * After the page pass fell back: hides the skip link F11 printed on this
+	 * request (hidden="", as F11 itself does when no target exists), because
+	 * nothing gave the main content its id. Only our own link is touched: it
+	 * is found by the exact opening tag we printed, must occur exactly once,
+	 * and is edited with the HTML API; on any doubt or error the page is
+	 * returned as it came.
+	 *
+	 * @param string $html Page as it came to the callback.
+	 * @return string
+	 */
+	private function hide_printed_skip_link( string $html ): string {
+		$fix = $this->registry->get( 'skip-link' );
+		if ( ! $fix instanceof Fixes\Fix_Skip_Link || Fixes\Fix_Skip_Link::PRINTER_PRINTED !== $fix->printer() ) {
+			return $html;
+		}
+		try {
+			$opener = Fixes\Fix_Skip_Link::printed_opener();
+			$at     = strpos( $html, $opener );
+			if ( false === $at || false !== strpos( $html, $opener, $at + 1 ) ) {
+				return $html;
+			}
+			$processor = new WP_HTML_Tag_Processor( $opener );
+			if ( ! $processor->next_tag( 'A' ) || ! $processor->set_attribute( 'hidden', '' ) ) {
+				return $html;
+			}
+			$hidden = $processor->get_updated_html();
+			if ( 1 !== substr_count( $hidden, '<' ) || 1 !== substr_count( $hidden, '>' ) || 0 !== strpos( $hidden, '<a ' ) ) {
+				return $html;
+			}
+			return substr_replace( $html, $hidden, $at, strlen( $opener ) );
+		} catch ( Throwable $throwable ) {
 			return $html;
 		}
 	}

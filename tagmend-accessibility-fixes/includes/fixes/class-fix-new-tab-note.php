@@ -67,6 +67,15 @@ final class Fix_New_Tab_Note extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Tells screen-reader users that a link opens in a new tab, through a hidden note connected with aria-describedby. Starts Off because WCAG places this at its highest level, which most sites do not aim for.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

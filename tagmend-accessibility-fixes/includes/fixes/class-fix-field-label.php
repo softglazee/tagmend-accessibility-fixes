@@ -55,6 +55,15 @@ final class Fix_Field_Label extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Names form fields that have no label with an aria-label from their placeholder, from a search field or from a known field name such as email or phone. The report still lists these fields, because the name is not visible.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

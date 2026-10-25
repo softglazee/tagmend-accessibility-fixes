@@ -106,6 +106,15 @@ final class Fix_Aria_Hidden_Focus extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Takes links, buttons and fields inside other content hidden from screen readers out of the tab order. Starts Off: if a script later shows that content without restoring the tab order, keyboard users cannot reach those controls. Before you set it Live, test every page it changes with the keyboard: open each menu, panel and dialog and check that Tab reaches every control in it.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]
@@ -133,12 +142,12 @@ final class Fix_Aria_Hidden_Focus extends Fix_Base {
 	}
 
 	/**
-	 * Risk: a script that reveals the container without resetting tabindex.
+	 * Risk: a script that reveals the container without resetting tabindex
+	 * (description() asks for a keyboard test on every page the fix changes).
 	 *
 	 * @return string
 	 */
 	public function risk(): string {
-		// TODO(Phase 7): the Fixes screen description asks for a keyboard test on every page this fix touches (blueprint section 6.1).
 		return 'high';
 	}
 

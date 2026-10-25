@@ -9,6 +9,7 @@ namespace SoftGlaze\AccessibilityRepair\Report;
 
 use SoftGlaze\AccessibilityRepair\Engine;
 use SoftGlaze\AccessibilityRepair\Install;
+use SoftGlaze\AccessibilityRepair\Registry;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -61,6 +62,25 @@ final class Pages_Store {
 		'live'     => 'changes_live',
 		'findings' => 'findings',
 	);
+
+	/**
+	 * Transient holding the per-fix sums of fix_totals(), and the rows read per query to build them.
+	 */
+	const TOTALS_TRANSIENT = 'softglaze_a11y_fix_totals';
+	const TOTALS_BATCH     = 50;
+
+	/**
+	 * Newest scan and admin-view reports looked at by last_page_scope().
+	 */
+	const SCOPE_LOOKBACK = 20;
+
+	/**
+	 * Values of page_pass_status().
+	 */
+	const PAGE_PASS_AVAILABLE    = 'available';
+	const PAGE_PASS_NEEDS_WP69   = 'needs_wp69';
+	const PAGE_PASS_SWITCHED_OFF = 'switched_off';
+	const PAGE_PASS_VETOED       = 'page_buffer_off';
 
 	/**
 	 * Rows kept.
@@ -248,6 +268,170 @@ final class Pages_Store {
 	 */
 	public function cap(): int {
 		return $this->cap;
+	}
+
+	/**
+	 * For each fix, the changes it lists across every stored report (Live,
+	 * Preview and Off "would change" together, from the full counts) and the
+	 * number of reports that list at least one. The sums are kept in a
+	 * transient until a report is added, replaced or deleted.
+	 *
+	 * @return array 'reports' => int, 'fixes' => array( fix id => array( 'changes' => int, 'pages' => int ) ).
+	 */
+	public function fix_totals(): array {
+		global $wpdb;
+		$empty = array(
+			'reports' => 0,
+			'fixes'   => array(),
+		);
+		if ( ! Install::ready() ) {
+			return $empty;
+		}
+		$table = self::table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Two numbers that tell whether the cached sums are still current.
+		$state = $wpdb->get_row( $wpdb->prepare( 'SELECT COUNT(*) AS reports, MAX(id) AS last_id FROM %i', $table ), ARRAY_A );
+		if ( ! is_array( $state ) || 0 === (int) $state['reports'] ) {
+			return $empty;
+		}
+		$key    = (int) $state['reports'] . ':' . (int) $state['last_id'];
+		$cached = get_transient( self::TOTALS_TRANSIENT );
+		if ( is_array( $cached ) && isset( $cached['key'], $cached['totals'] ) && $key === $cached['key'] && is_array( $cached['totals'] ) ) {
+			return $cached['totals'];
+		}
+
+		$fixes  = array();
+		$before = (int) $state['last_id'] + 1;
+		do {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Read in batches; the sums are cached above.
+			$rows    = $wpdb->get_results( $wpdb->prepare( 'SELECT id, result FROM %i WHERE id < %d ORDER BY id DESC LIMIT %d', $table, $before, self::TOTALS_BATCH ), ARRAY_A );
+			$rows    = is_array( $rows ) ? $rows : array();
+			$fetched = count( $rows );
+			foreach ( $rows as $row ) {
+				$before = (int) $row['id'];
+				$result = json_decode( (string) $row['result'], true );
+				if ( ! is_array( $result ) || ! isset( $result['counts'] ) || ! is_array( $result['counts'] ) ) {
+					continue;
+				}
+				foreach ( $result['counts'] as $fix => $states ) {
+					if ( ! is_string( $fix ) || ! is_array( $states ) ) {
+						continue;
+					}
+					$changes = 0;
+					foreach ( Engine::STATES as $fix_state ) {
+						$changes += isset( $states[ $fix_state ] ) ? absint( $states[ $fix_state ] ) : 0;
+					}
+					if ( 0 === $changes ) {
+						continue;
+					}
+					if ( ! isset( $fixes[ $fix ] ) ) {
+						$fixes[ $fix ] = array(
+							'changes' => 0,
+							'pages'   => 0,
+						);
+					}
+					$fixes[ $fix ]['changes'] += $changes;
+					++$fixes[ $fix ]['pages'];
+				}
+			}
+		} while ( self::TOTALS_BATCH === $fetched );
+
+		$totals = array(
+			'reports' => (int) $state['reports'],
+			'fixes'   => $fixes,
+		);
+		set_transient(
+			self::TOTALS_TRANSIENT,
+			array(
+				'key'    => $key,
+				'totals' => $totals,
+			),
+			DAY_IN_SECONDS
+		);
+		return $totals;
+	}
+
+	/**
+	 * Whether the whole-page pass can run on this site, for the Overview and
+	 * `wp softglaze-a11y status`: 'needs_wp69' below WordPress 6.9,
+	 * 'switched_off' when Settings switch it off, 'page_buffer_off' when the
+	 * newest report that can tell saw another plugin switch off the
+	 * WordPress page buffer, otherwise 'available' ('confirmed' when the
+	 * newest such report was a whole-page report).
+	 *
+	 * @param bool $switched_on Settings: whole-page repair on.
+	 * @return array 'status' => string, 'confirmed' => bool, 'url' => string, 'scanned_gmt' => string.
+	 */
+	public function page_pass_status( bool $switched_on ): array {
+		$status = array(
+			'status'      => self::PAGE_PASS_AVAILABLE,
+			'confirmed'   => false,
+			'url'         => '',
+			'scanned_gmt' => '',
+		);
+		if ( ! Registry::page_pass_exists() ) {
+			$status['status'] = self::PAGE_PASS_NEEDS_WP69;
+			return $status;
+		}
+		if ( ! $switched_on ) {
+			$status['status'] = self::PAGE_PASS_SWITCHED_OFF;
+			return $status;
+		}
+		$seen = $this->last_page_scope();
+		if ( '' === $seen['scope'] ) {
+			return $status;
+		}
+		$status['url']         = $seen['url'];
+		$status['scanned_gmt'] = $seen['scanned_gmt'];
+		if ( Scanner::REASON_PAGE_BUFFER_OFF === $seen['scope'] ) {
+			$status['status'] = self::PAGE_PASS_VETOED;
+		} else {
+			$status['confirmed'] = true;
+		}
+		return $status;
+	}
+
+	/**
+	 * Whether the whole-page pass ran on the newest scan or "View repaired"
+	 * report that can tell: 'page' when it did, 'page_buffer_off' when
+	 * another plugin had switched off the WordPress page buffer, '' when no
+	 * such report exists (WP-CLI reports, reports made below WordPress 6.9,
+	 * with the page pass switched off, or without a fix that needed it say
+	 * nothing about other plugins). Only scans and admin views record a
+	 * scope; visitor requests never do (decision D8).
+	 *
+	 * @return array 'scope' => 'page'|'page_buffer_off'|'', 'url' => string, 'scanned_gmt' => string.
+	 */
+	public function last_page_scope(): array {
+		global $wpdb;
+		$none = array(
+			'scope'       => '',
+			'url'         => '',
+			'scanned_gmt' => '',
+		);
+		if ( ! Install::ready() ) {
+			return $none;
+		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The newest reports of the plugin's own table, read on demand.
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT url, scanned_gmt, result FROM %i WHERE source IN ( %s, %s ) ORDER BY id DESC LIMIT %d', self::table_name(), 'admin_scan', 'admin_view', self::SCOPE_LOOKBACK ), ARRAY_A );
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$result = json_decode( (string) $row['result'], true );
+			$engine = is_array( $result ) && isset( $result['engine'] ) && is_array( $result['engine'] ) ? $result['engine'] : array();
+			$scope  = isset( $engine['scope'] ) ? (string) $engine['scope'] : '';
+			$reason = isset( $engine['scope_reason'] ) ? (string) $engine['scope_reason'] : '';
+			if ( Engine::SCOPE_PAGE === $scope ) {
+				$found = Engine::SCOPE_PAGE;
+			} elseif ( Engine::SCOPE_CONTENT === $scope && Scanner::REASON_PAGE_BUFFER_OFF === $reason ) {
+				$found = Scanner::REASON_PAGE_BUFFER_OFF;
+			} else {
+				continue;
+			}
+			return array(
+				'scope'       => $found,
+				'url'         => (string) $row['url'],
+				'scanned_gmt' => (string) $row['scanned_gmt'],
+			);
+		}
+		return $none;
 	}
 
 	/**

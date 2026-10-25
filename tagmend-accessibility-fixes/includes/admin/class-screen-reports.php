@@ -378,9 +378,14 @@ final class Screen_Reports {
 			return;
 		}
 		printf(
-			'<div class="notice notice-%1$s inline softglaze-a11y-status" role="status" tabindex="-1"><p>%2$s</p></div>',
+			'<div class="notice notice-%1$s inline softglaze-a11y-status" role="status" tabindex="-1"><p>%2$s</p>',
 			esc_attr( $messages[ $status ][0] ),
 			esc_html( $messages[ $status ][1] )
 		);
+		if ( 'live' === $status ) {
+			// Visitors get the change only once page caches drop their stored copies (decision D-05: a reminder, no purge call).
+			printf( '<p>%s</p>', esc_html( Cache_Reminder::after_change() ) );
+		}
+		echo '</div>';
 	}
 }

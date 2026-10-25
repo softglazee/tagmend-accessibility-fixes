@@ -45,6 +45,16 @@ abstract class Fix_Base implements Fix {
 	const WITH_ATTRIBUTE = '@';
 
 	/**
+	 * What the fix changes, in one or two translated sentences for the Fixes
+	 * screen. Fixes added through softglaze_a11y_register_fixes may leave it empty.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return '';
+	}
+
+	/**
 	 * Upper-case tag names whose openers (and tracked closers) this fix sees.
 	 * An empty array means every opener; array( self::FINISH_ONLY ) means none;
 	 * self::IN_HIDDEN adds the openers in aria-hidden content; an entry

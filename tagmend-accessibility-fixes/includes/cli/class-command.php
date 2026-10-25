@@ -9,7 +9,7 @@ namespace SoftGlaze\AccessibilityRepair\Cli;
 
 use SoftGlaze\AccessibilityRepair\Engine;
 use SoftGlaze\AccessibilityRepair\Plugin;
-use SoftGlaze\AccessibilityRepair\Registry;
+use SoftGlaze\AccessibilityRepair\Report\Pages_Store;
 use SoftGlaze\AccessibilityRepair\Report\Scanner;
 use WP_CLI;
 
@@ -344,12 +344,22 @@ final class Command {
 		\WP_CLI\Utils\format_items( $format, $rows, array( 'id', 'state', 'available', 'scopes', 'recommended', 'label' ) );
 
 		if ( 'table' === $format ) {
-			if ( ! Registry::page_pass_exists() ) {
-				$page_pass = 'Needs WordPress 6.9 or later';
-			} elseif ( ! $plugin->settings()->page_scope_enabled() ) {
-				$page_pass = 'switched off in Settings';
-			} else {
-				$page_pass = 'available';
+			// The same reading as the Overview: another plugin switching off the page buffer shows only in scan and "View repaired" reports.
+			$status = $plugin->pages()->page_pass_status( $plugin->settings()->page_scope_enabled() );
+			switch ( $status['status'] ) {
+				case Pages_Store::PAGE_PASS_NEEDS_WP69:
+					$page_pass = 'Needs WordPress 6.9 or later';
+					break;
+				case Pages_Store::PAGE_PASS_SWITCHED_OFF:
+					$page_pass = 'switched off in Settings';
+					break;
+				case Pages_Store::PAGE_PASS_VETOED:
+					$page_pass = sprintf( 'switched off by another plugin on the last scanned pages (report of %1$s, %2$s UTC)', $status['url'], $status['scanned_gmt'] );
+					break;
+				default:
+					$page_pass = $status['confirmed']
+						? sprintf( 'available (report of %1$s, %2$s UTC, covers the whole page)', $status['url'], $status['scanned_gmt'] )
+						: 'available (not confirmed by a scan yet)';
 			}
 			WP_CLI::line( 'Whole-page pass: ' . $page_pass );
 		}

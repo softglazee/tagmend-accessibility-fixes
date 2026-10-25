@@ -50,6 +50,15 @@ final class Fix_Img_In_Named_Control extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Gives an image without alt text inside a link or button that already has text an empty alt (alt=""), so screen readers neither read the file name nor repeat the link text.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

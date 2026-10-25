@@ -107,14 +107,25 @@ final class Plugin {
 	private $log_screen;
 
 	/**
-	 * Hook suffixes of the screens that load admin.css, and of the one that also loads admin.js.
+	 * Overview screen.
 	 *
-	 * @var array
+	 * @var Admin\Screen_Overview
 	 */
-	private $asset_hooks = array(
-		'css' => array(),
-		'js'  => array(),
-	);
+	private $overview_screen;
+
+	/**
+	 * Settings screen.
+	 *
+	 * @var Admin\Screen_Settings
+	 */
+	private $settings_screen;
+
+	/**
+	 * Hook suffixes of the plugin's own screens, which load admin.css and admin.js.
+	 *
+	 * @var string[]
+	 */
+	private $asset_hooks = array();
 
 	/**
 	 * Returns the single instance, creating it on first use.
@@ -139,12 +150,14 @@ final class Plugin {
 		$this->log          = new Report\Log_Store();
 		$this->scanner      = new Report\Scanner( $this->gate, $this->pages, $this->log );
 		$this->front_end    = new Front_End( $this->gate, $this->registry, $this->settings, $this->scanner );
-		$this->fixes_screen = new Admin\Screen_Fixes( $this->registry, $this->settings );
+		$this->fixes_screen = new Admin\Screen_Fixes( $this->registry, $this->settings, $this->pages );
 		$this->install      = new Install( $this->settings, $this->log );
 
-		$details              = new Admin\Screen_Report_Details( $this->registry, $this->settings, $this->scanner, $this->log );
-		$this->reports_screen = new Admin\Screen_Reports( $this->scanner, $details );
-		$this->log_screen     = new Admin\Screen_Log( $this->registry, $this->log );
+		$details               = new Admin\Screen_Report_Details( $this->registry, $this->settings, $this->scanner, $this->log );
+		$this->reports_screen  = new Admin\Screen_Reports( $this->scanner, $details );
+		$this->log_screen      = new Admin\Screen_Log( $this->registry, $this->log );
+		$this->overview_screen = new Admin\Screen_Overview( $this->settings, $this->scanner );
+		$this->settings_screen = new Admin\Screen_Settings( $this->settings, $this->log, $this->pages );
 
 		register_activation_hook( SOFTGLAZE_A11Y_FILE, array( $this->install, 'activate' ) );
 		add_action( 'init', array( $this->settings, 'register' ) );
@@ -157,7 +170,9 @@ final class Plugin {
 			$this->fixes_screen->register();
 			$this->reports_screen->register();
 			$this->log_screen->register();
+			$this->settings_screen->register();
 			$this->install->register();
+			( new Privacy() )->register();
 		} elseif ( ! $this->gate->kill_switch() ) {
 			$this->front_end->register();
 			( new Admin\Admin_Bar( $this->settings, $this->gate, $this->scanner ) )->register();
@@ -268,12 +283,31 @@ final class Plugin {
 	}
 
 	/**
-	 * Adds the top-level admin menu and its Overview, Fixes, Reports and Activity log pages.
+	 * Overview screen.
+	 *
+	 * @return Admin\Screen_Overview
+	 */
+	public function overview_screen(): Admin\Screen_Overview {
+		return $this->overview_screen;
+	}
+
+	/**
+	 * Settings screen.
+	 *
+	 * @return Admin\Screen_Settings
+	 */
+	public function settings_screen(): Admin\Screen_Settings {
+		return $this->settings_screen;
+	}
+
+	/**
+	 * Adds the top-level admin menu and its Overview, Fixes, Reports,
+	 * Activity log and Settings pages.
 	 *
 	 * @return void
 	 */
 	public function register_menu() {
-		add_menu_page(
+		$overview = add_menu_page(
 			__( 'Tagmend – Accessibility Fixes', 'tagmend-accessibility-fixes' ),
 			__( 'Accessibility Fixes', 'tagmend-accessibility-fixes' ),
 			'manage_options',
@@ -289,35 +323,31 @@ final class Plugin {
 			self::MENU_SLUG,
 			array( $this, 'render_overview' )
 		);
-		$this->fixes_screen->add_page( self::MENU_SLUG );
-		$reports = $this->reports_screen->add_page( self::MENU_SLUG );
-		$log     = $this->log_screen->add_page( self::MENU_SLUG );
-		// TODO(Phase 7): the Settings page.
+		$fixes    = $this->fixes_screen->add_page( self::MENU_SLUG );
+		$reports  = $this->reports_screen->add_page( self::MENU_SLUG );
+		$log      = $this->log_screen->add_page( self::MENU_SLUG );
+		$settings = $this->settings_screen->add_page( self::MENU_SLUG );
 
-		$this->asset_hooks = array(
-			'css' => array_values( array_filter( array( $reports, $log ) ) ),
-			'js'  => array_values( array_filter( array( $reports ) ) ),
-		);
+		$this->asset_hooks = array_values( array_filter( array( is_string( $overview ) ? $overview : '', $fixes, $reports, $log, $settings ) ) );
 	}
 
 	/**
-	 * Loads admin.css on the Reports and Activity log screens and admin.js
-	 * (scans, through wp-api-fetch; translations through wp-i18n) on the
-	 * Reports screen only. Nothing is printed inline: admin.js reads its data
-	 * from data-* attributes.
+	 * Loads admin.css and admin.js on the plugin's own screens only.
+	 * admin.js moves focus to the inline status message after a save and
+	 * runs scans (through wp-api-fetch; translations through wp-i18n) where
+	 * the Reports screen shows its scan panel. Nothing is printed inline:
+	 * admin.js reads its data from data-* attributes.
 	 *
 	 * @param string $hook_suffix Current admin screen.
 	 * @return void
 	 */
 	public function enqueue_admin_assets( $hook_suffix ) {
-		if ( ! is_string( $hook_suffix ) || ! in_array( $hook_suffix, $this->asset_hooks['css'], true ) ) {
+		if ( ! is_string( $hook_suffix ) || ! in_array( $hook_suffix, $this->asset_hooks, true ) ) {
 			return;
 		}
 		wp_enqueue_style( 'softglaze-a11y-admin', plugins_url( 'assets/css/admin.css', SOFTGLAZE_A11Y_FILE ), array(), SOFTGLAZE_A11Y_VERSION );
-		if ( in_array( $hook_suffix, $this->asset_hooks['js'], true ) ) {
-			wp_enqueue_script( 'softglaze-a11y-admin', plugins_url( 'assets/js/admin.js', SOFTGLAZE_A11Y_FILE ), array( 'wp-api-fetch', 'wp-i18n' ), SOFTGLAZE_A11Y_VERSION, true );
-			wp_set_script_translations( 'softglaze-a11y-admin', 'tagmend-accessibility-fixes' );
-		}
+		wp_enqueue_script( 'softglaze-a11y-admin', plugins_url( 'assets/js/admin.js', SOFTGLAZE_A11Y_FILE ), array( 'wp-api-fetch', 'wp-i18n' ), SOFTGLAZE_A11Y_VERSION, true );
+		wp_set_script_translations( 'softglaze-a11y-admin', 'tagmend-accessibility-fixes' );
 	}
 
 	/**
@@ -326,14 +356,6 @@ final class Plugin {
 	 * @return void
 	 */
 	public function render_overview() {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-		// TODO(Phase 7): status counts, first-run steps, page-pass availability, recent scans, fallbacks and the disclaimer (blueprint section 12).
-		?>
-		<div class="wrap">
-			<h1><?php echo esc_html__( 'Tagmend – Accessibility Fixes', 'tagmend-accessibility-fixes' ); ?></h1>
-		</div>
-		<?php
+		$this->overview_screen->render();
 	}
 }

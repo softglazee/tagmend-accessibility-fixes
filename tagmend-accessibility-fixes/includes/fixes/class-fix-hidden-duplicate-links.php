@@ -54,6 +54,15 @@ final class Fix_Hidden_Duplicate_Links extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Takes links that are hidden from screen readers out of the tab order when a visible link nearby goes to the same address, such as the image link of a card next to its title link.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

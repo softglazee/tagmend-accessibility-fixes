@@ -59,6 +59,15 @@ final class Fix_Read_More_Context extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Adds the post title to "Read more" style links, for example "Read more: Opening hours", keeping the visible text at the start of the name.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

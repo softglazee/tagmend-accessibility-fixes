@@ -51,6 +51,15 @@ final class Fix_Img_Alt_Library extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Gives images that have no alt attribute the alt text saved for them in the Media Library. Images whose Media Library alt text is empty are listed in the report instead.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

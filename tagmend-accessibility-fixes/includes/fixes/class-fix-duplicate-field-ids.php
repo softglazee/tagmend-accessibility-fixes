@@ -50,6 +50,15 @@ final class Fix_Duplicate_Field_Ids extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Gives a form field whose id is repeated on the page an id of its own, and updates the label and ARIA references in the same form. Starts Off because scripts and styles that select the old id no longer match the renamed field.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

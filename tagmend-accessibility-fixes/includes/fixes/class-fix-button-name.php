@@ -66,6 +66,15 @@ final class Fix_Button_Name extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Names buttons that have no text, such as search, menu, close and icon buttons, with an aria-label, and gives empty Submit buttons a value. Buttons it cannot name are listed in the report.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

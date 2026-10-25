@@ -41,6 +41,16 @@ final class Settings {
 	const EXCLUDE_MAX_LENGTH = 200;
 
 	/**
+	 * Settings error code for path lines that were not kept.
+	 */
+	const PATHS_ERROR = 'softglaze_a11y_paths';
+
+	/**
+	 * Keys an administrator changes on the Settings screen (the fix states are saved on the Fixes screen).
+	 */
+	const SCREEN_KEYS = array( 'page_scope', 'admin_bar', 'max_kb', 'max_ms', 'exclude_paths', 'delete_data_on_uninstall' );
+
+	/**
 	 * The fix list.
 	 *
 	 * @var Registry
@@ -247,10 +257,54 @@ final class Settings {
 		}
 
 		if ( array_key_exists( 'exclude_paths', $value ) ) {
-			$clean['exclude_paths'] = self::sanitize_paths( $value['exclude_paths'] );
+			$dropped                = 0;
+			$clean['exclude_paths'] = self::sanitize_paths( $value['exclude_paths'], $dropped );
+			if ( $dropped > 0 ) {
+				$this->rejected[] = array(
+					'id'     => 'exclude_paths',
+					'reason' => 'invalid_path',
+				);
+				self::report_dropped_paths( $dropped );
+			}
 		}
 
 		return $clean;
+	}
+
+	/**
+	 * Tells the Settings screen how many path lines were not kept. The
+	 * Settings API carries the message across the redirect after options.php;
+	 * outside wp-admin (WP-CLI) there is no screen to tell.
+	 *
+	 * @param int $dropped Lines not kept.
+	 * @return void
+	 */
+	private static function report_dropped_paths( int $dropped ): void {
+		if ( ! function_exists( 'add_settings_error' ) || ! function_exists( 'get_settings_errors' ) ) {
+			return;
+		}
+		foreach ( get_settings_errors( self::OPTION ) as $error ) {
+			if ( isset( $error['code'] ) && self::PATHS_ERROR === $error['code'] ) {
+				return;
+			}
+		}
+		add_settings_error(
+			self::OPTION,
+			self::PATHS_ERROR,
+			sprintf(
+				/* translators: 1: number of lines, 2: longest allowed path in characters, 3: most paths kept */
+				_n(
+					'%1$s line of "Never repair these paths" was not saved: each path must start with / and be at most %2$s characters long, and at most %3$s paths are kept.',
+					'%1$s lines of "Never repair these paths" were not saved: each path must start with / and be at most %2$s characters long, and at most %3$s paths are kept.',
+					$dropped,
+					'tagmend-accessibility-fixes'
+				),
+				number_format_i18n( $dropped ),
+				number_format_i18n( self::EXCLUDE_MAX_LENGTH ),
+				number_format_i18n( self::EXCLUDE_MAX_ITEMS )
+			),
+			'warning'
+		);
 	}
 
 	/**
@@ -287,6 +341,15 @@ final class Settings {
 	 */
 	public function admin_bar_enabled(): bool {
 		return true === $this->get()['admin_bar'];
+	}
+
+	/**
+	 * Whether deleting the plugin also deletes its data (uninstall.php reads the option itself).
+	 *
+	 * @return bool
+	 */
+	public function delete_data_on_uninstall(): bool {
+		return true === $this->get()['delete_data_on_uninstall'];
 	}
 
 	/**
@@ -345,10 +408,12 @@ final class Settings {
 	/**
 	 * Path prefixes: one per line or an array, each plain text starting with "/".
 	 *
-	 * @param mixed $paths Submitted value.
+	 * @param mixed $paths   Submitted value.
+	 * @param int   $dropped Set to the number of non-empty lines that were not kept.
 	 * @return string[]
 	 */
-	private static function sanitize_paths( $paths ): array {
+	private static function sanitize_paths( $paths, int &$dropped = 0 ): array {
+		$dropped = 0;
 		if ( is_string( $paths ) ) {
 			$paths = preg_split( '/\R/', $paths );
 		}
@@ -362,13 +427,14 @@ final class Settings {
 				continue;
 			}
 			$path = trim( sanitize_text_field( $path ) );
-			if ( '' === $path || '/' !== $path[0] || strlen( $path ) > self::EXCLUDE_MAX_LENGTH ) {
+			if ( '' === $path ) {
+				continue;
+			}
+			if ( '/' !== $path[0] || strlen( $path ) > self::EXCLUDE_MAX_LENGTH || ( ! isset( $clean[ $path ] ) && count( $clean ) >= self::EXCLUDE_MAX_ITEMS ) ) {
+				++$dropped;
 				continue;
 			}
 			$clean[ $path ] = $path;
-			if ( count( $clean ) >= self::EXCLUDE_MAX_ITEMS ) {
-				break;
-			}
 		}
 		return array_values( $clean );
 	}

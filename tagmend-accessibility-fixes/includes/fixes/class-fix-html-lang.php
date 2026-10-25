@@ -48,6 +48,15 @@ final class Fix_Html_Lang extends Fix_Base {
 	}
 
 	/**
+	 * What the fix changes, shown on the Fixes screen.
+	 *
+	 * @return string
+	 */
+	public function description(): string {
+		return __( 'Sets the language of the page from the site language when the html element has no lang attribute or a malformed one (en_US becomes en-US). A valid language set by the theme or a translation plugin is never changed.', 'tagmend-accessibility-fixes' );
+	}
+
+	/**
 	 * WCAG success criteria.
 	 *
 	 * @return string[]

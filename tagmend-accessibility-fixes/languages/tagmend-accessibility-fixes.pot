@@ -1,0 +1,1936 @@
+# Copyright (C) 2026 SoftGlaze
+# This file is distributed under the GPLv2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Tagmend – Accessibility Fixes 0.11.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-10-25T15:08:42+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: tagmend-accessibility-fixes\n"
+
+#. Plugin Name of the plugin
+#: tagmend-accessibility-fixes.php
+#: includes/admin/class-screen-overview.php:129
+#: includes/class-install.php:74
+#: includes/class-plugin.php:311
+#: includes/class-plugin.php:320
+#: includes/class-privacy.php:38
+msgid "Tagmend – Accessibility Fixes"
+msgstr ""
+
+#. Description of the plugin
+#: tagmend-accessibility-fixes.php
+msgid "Accessibility fixes for theme, page builder and WooCommerce HTML: common WCAG failures repaired on your server. Preview each fix."
+msgstr ""
+
+#. Author of the plugin
+#: tagmend-accessibility-fixes.php
+msgid "SoftGlaze"
+msgstr ""
+
+#. Author URI of the plugin
+#: tagmend-accessibility-fixes.php
+msgid "https://softglaze.com"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:92
+msgid "Tagmend"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:93
+#: includes/admin/class-pages-list-table.php:234
+#: includes/admin/class-screen-report-details.php:318
+msgid "View original"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:94
+#: includes/admin/class-screen-report-details.php:319
+msgid "View repaired (Live + Preview)"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:95
+msgid "Scan this page"
+msgstr ""
+
+#: includes/admin/class-admin-bar.php:97
+msgid "Changes on this page (not scanned yet)"
+msgstr ""
+
+#. translators: %s: number of Live and Preview changes in the last report of this page
+#: includes/admin/class-admin-bar.php:102
+#, php-format
+msgid "Changes on this page (%s)"
+msgstr ""
+
+#: includes/admin/class-cache-reminder.php:61
+msgid "If this site uses a page cache or a CDN cache, clear it so visitors get the change: cached pages keep the previous version until then."
+msgstr ""
+
+#. translators: %s: name of a page-cache plugin, for example WP Super Cache
+#: includes/admin/class-cache-reminder.php:65
+#, php-format
+msgid "%s is active on this site: pages it has already stored keep the previous version until you clear its page cache from its own settings screen."
+msgstr ""
+
+#: includes/admin/class-cache-reminder.php:79
+msgid "After you change a fix, pages kept by a page cache or a CDN cache show the previous version until you clear that cache. No page-cache plugin that Tagmend recognises is active."
+msgstr ""
+
+#. translators: %s: name of a page-cache plugin, for example WP Super Cache
+#: includes/admin/class-cache-reminder.php:83
+#, php-format
+msgid "After you change a fix, pages already stored by %s keep the previous version until you clear its page cache from its own settings screen. A CDN cache, if you use one, needs the same."
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:69
+msgid "Date"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:70
+#: includes/admin/class-screen-log.php:267
+msgid "Event"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:71
+#: includes/admin/class-screen-log.php:268
+msgid "User"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:72
+#: includes/admin/class-screen-log.php:269
+msgid "Fix"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:73
+msgid "Change"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:74
+#: includes/admin/class-pages-list-table.php:65
+#: includes/admin/class-screen-log.php:272
+msgid "Page"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:75
+#: includes/admin/class-screen-log.php:273
+msgid "Detail"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:151
+msgid "No entries yet."
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:167
+msgid "Show entries of"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:169
+msgid "All events"
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:174
+msgid "Filter"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:66
+#: includes/admin/class-screen-report-details.php:271
+msgid "Last scanned"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:67
+#: includes/admin/class-screen-report-details.php:273
+msgid "Source"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:68
+#: includes/admin/class-screen-report-details.php:275
+msgid "Live changes"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:69
+#: includes/admin/class-screen-report-details.php:277
+msgid "Would change (Preview, Off)"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:70
+#: includes/admin/class-screen-report-details.php:290
+#: includes/admin/class-screen-report-details.php:513
+msgid "Needs a person"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:71
+msgid "Changed since scan"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:159
+msgid "No reports yet. Scan your home page above, or open a page and use \"Scan this page\" in the admin bar."
+msgstr ""
+
+#. translators: 1: number of changes of fixes in Preview, 2: number of changes fixes that are Off would make
+#: includes/admin/class-pages-list-table.php:195
+#: includes/admin/class-screen-report-details.php:283
+#, php-format
+msgid "%1$s Preview, %2$s Off"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:205
+msgid "Changed since last scan"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:208
+msgid "No"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:210
+msgid "Not known"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:240
+#: includes/admin/class-report-view.php:40
+msgid "View repaired"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:246
+msgid "Details"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:253
+msgid "Rescan"
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:259
+msgid "Delete report"
+msgstr ""
+
+#: includes/admin/class-report-view.php:38
+msgid "Scan"
+msgstr ""
+
+#: includes/admin/class-report-view.php:42
+#: includes/admin/class-screen-log.php:354
+msgid "WP-CLI"
+msgstr ""
+
+#: includes/admin/class-report-view.php:44
+#: includes/admin/class-screen-fixes.php:823
+msgid "Unknown"
+msgstr ""
+
+#: includes/admin/class-report-view.php:57
+#: includes/admin/class-screen-fixes.php:398
+#: includes/admin/class-screen-log.php:394
+#: includes/admin/class-screen-overview.php:213
+#: includes/admin/class-screen-report-details.php:424
+msgid "Live"
+msgstr ""
+
+#: includes/admin/class-report-view.php:59
+#: includes/admin/class-screen-fixes.php:397
+#: includes/admin/class-screen-log.php:396
+#: includes/admin/class-screen-overview.php:214
+#: includes/admin/class-screen-report-details.php:424
+msgid "Preview"
+msgstr ""
+
+#: includes/admin/class-report-view.php:61
+msgid "Off (would change)"
+msgstr ""
+
+#: includes/admin/class-report-view.php:73
+msgid "Text contrast of declared colours"
+msgstr ""
+
+#: includes/admin/class-report-view.php:74
+msgid "Heading structure"
+msgstr ""
+
+#: includes/admin/class-report-view.php:75
+msgid "Alt text to review"
+msgstr ""
+
+#: includes/admin/class-report-view.php:76
+msgid "Images the plugin could not describe"
+msgstr ""
+
+#: includes/admin/class-report-view.php:77
+msgid "Links, buttons and fields the plugin could not name"
+msgstr ""
+
+#: includes/admin/class-report-view.php:78
+msgid "Fields without a visible label"
+msgstr ""
+
+#: includes/admin/class-report-view.php:79
+msgid "Link text that does not say where it goes"
+msgstr ""
+
+#: includes/admin/class-report-view.php:80
+msgid "Landmarks and skip links"
+msgstr ""
+
+#: includes/admin/class-report-view.php:81
+msgid "Page title"
+msgstr ""
+
+#: includes/admin/class-report-view.php:82
+msgid "Media that plays by itself"
+msgstr ""
+
+#: includes/admin/class-report-view.php:83
+msgid "Repeated ids the plugin did not change"
+msgstr ""
+
+#: includes/admin/class-report-view.php:84
+msgid "Controls that are not buttons or links"
+msgstr ""
+
+#: includes/admin/class-report-view.php:85
+msgid "Data tables without header cells"
+msgstr ""
+
+#: includes/admin/class-report-view.php:99
+msgid "This report covers the whole page."
+msgstr ""
+
+#: includes/admin/class-report-view.php:103
+msgid "This report covers post content, template parts, widgets and menus only. Another plugin switched off the WordPress page buffer on this site (some page builders do), so the page-level checks (head, theme header and footer, skip links, repeated ids) did not run."
+msgstr ""
+
+#: includes/admin/class-report-view.php:105
+msgid "This report covers post content, template parts, widgets and menus only. Page-level checks (head, theme header and footer, skip links, repeated ids) need WordPress 6.9 or later."
+msgstr ""
+
+#: includes/admin/class-report-view.php:107
+msgid "This report covers post content, template parts, widgets and menus only, because the whole-page repair is switched off in Settings."
+msgstr ""
+
+#: includes/admin/class-report-view.php:109
+msgid "This report covers post content, template parts, widgets and menus only: none of the Live or Preview fixes needed the whole page when this view was opened."
+msgstr ""
+
+#: includes/admin/class-report-view.php:111
+msgid "This report covers a part of the page only."
+msgstr ""
+
+#: includes/admin/class-report-view.php:124
+msgid "the page is larger than the size limit"
+msgstr ""
+
+#: includes/admin/class-report-view.php:126
+msgid "the repair took longer than the time limit"
+msgstr ""
+
+#: includes/admin/class-report-view.php:128
+msgid "the page is not valid UTF-8 text"
+msgstr ""
+
+#. translators: %s: short technical reason, for example "sanity"
+#: includes/admin/class-report-view.php:132
+#, php-format
+msgid "a safety check stopped the repair (%s)"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:138
+#: includes/admin/class-screen-fixes.php:139
+#: includes/admin/class-screen-fixes.php:305
+#: includes/admin/class-screen-overview.php:272
+msgid "Fixes"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:173
+#: includes/admin/class-screen-fixes.php:323
+#: includes/admin/class-screen-fixes.php:530
+msgid "Move all Preview fixes to Live"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:216
+#: includes/admin/class-screen-fixes.php:251
+#: includes/admin/class-screen-report-details.php:139
+msgid "Sorry, you are not allowed to change fix states."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:220
+msgid "This form has expired. Open the Fixes screen again and save once more."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:255
+msgid "This form has expired. Open the Fixes screen again and try once more."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:307
+msgid "Off: never applied. Preview: applied only when you open a page with \"View repaired\" in the admin bar. Live: applied for every visitor."
+msgstr ""
+
+#. translators: 1: number of Live fixes, 2: number of Preview fixes, 3: number of fixes that are Off
+#: includes/admin/class-screen-fixes.php:313
+#, php-format
+msgid "Now: %1$s Live, %2$s Preview, %3$s Off."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:325
+msgid "No fix that can run on this site is in Preview."
+msgstr ""
+
+#. translators: %s: number of fixes
+#: includes/admin/class-screen-fixes.php:332
+#, php-format
+msgid "%s fix is in Preview. The next step lists it and asks you to confirm before visitors get its changes."
+msgid_plural "%s fixes are in Preview. The next step lists them and asks you to confirm before visitors get their changes."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-screen-fixes.php:343
+msgid "Review the Preview fixes"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:364
+msgid "Save fix states"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:396
+#: includes/admin/class-screen-log.php:398
+#: includes/admin/class-screen-overview.php:215
+#: includes/admin/class-screen-report-details.php:424
+msgid "Off"
+msgstr ""
+
+#. translators: %s: risk level, for example Low
+#: includes/admin/class-screen-fixes.php:427
+#, php-format
+msgid "Risk: %s."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:433
+msgid "Recommended: starts in Preview after activation."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:433
+msgid "Starts Off after activation."
+msgstr ""
+
+#. translators: %s: success criterion number and name, for example 4.1.2 Name, Role, Value
+#: includes/admin/class-screen-fixes.php:453
+#, php-format
+msgid "WCAG %s."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:463
+#: includes/fixes/class-fix-read-more-context.php:224
+msgid "Learn more"
+msgstr ""
+
+#. translators: %s: success criterion number and name, for example 4.1.2 Name, Role, Value
+#: includes/admin/class-screen-fixes.php:467
+#, php-format
+msgid "about %s on the W3C website"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:484
+msgid "Scan reports do not list this fix: it works through WordPress hooks while a page is built. Open a page with \"View repaired\" to see its changes."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:488
+msgid "No page has been scanned yet."
+msgstr ""
+
+#. translators: %s: number of scanned pages
+#: includes/admin/class-screen-fixes.php:495
+#, php-format
+msgid "No changes on the %s scanned page."
+msgid_plural "No changes on the %s scanned pages."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: number of changed elements, 2: number of pages with changes, 3: number of scanned pages
+#: includes/admin/class-screen-fixes.php:502
+#, php-format
+msgid "Changes %1$s element on %2$s of the %3$s scanned pages."
+msgid_plural "Changes %1$s elements on %2$s of the %3$s scanned pages."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: number of elements, 2: number of pages with changes, 3: number of scanned pages
+#: includes/admin/class-screen-fixes.php:510
+#, php-format
+msgid "Would change %1$s element on %2$s of the %3$s scanned pages."
+msgid_plural "Would change %1$s elements on %2$s of the %3$s scanned pages."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-screen-fixes.php:529
+msgid "Back to Fixes"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:532
+msgid "No fix that can run on this site is in Preview, so there is nothing to move."
+msgstr ""
+
+#. translators: %s: number of fixes
+#: includes/admin/class-screen-fixes.php:539
+#, php-format
+msgid "%s fix is in Preview. After you confirm, it is Live and every visitor gets its changes:"
+msgid_plural "These %s fixes are in Preview. After you confirm, they are Live and every visitor gets their changes:"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-screen-fixes.php:557
+msgid "These stay in Preview because they cannot run on this site:"
+msgstr ""
+
+#. translators: %s: number of fixes
+#: includes/admin/class-screen-fixes.php:577
+#, php-format
+msgid "Move %s fix to Live"
+msgid_plural "Move these %s fixes to Live"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-screen-fixes.php:583
+msgid "Cancel"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:660
+msgid "Images"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:662
+msgid "Links and buttons"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:664
+msgid "Forms"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:666
+msgid "Page structure"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:668
+msgid "Keyboard"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:670
+msgid "Embeds and media"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:672
+msgid "Other fixes"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:684
+msgid "Non-text Content"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:685
+msgid "Info and Relationships"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:686
+msgid "Resize Text"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:687
+msgid "Bypass Blocks"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:688
+msgid "Focus Order"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:689
+msgid "Link Purpose (In Context)"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:690
+msgid "Headings and Labels"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:691
+msgid "Focus Visible"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:692
+msgid "Language of Page"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:693
+msgid "Change on Request"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:694
+msgid "Name, Role, Value"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:714
+msgid "Some fix states could not be saved and kept their previous value."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:719
+msgid "No fix was moved: none of the listed fixes was still in Preview."
+msgstr ""
+
+#. translators: %s: number of fixes
+#: includes/admin/class-screen-fixes.php:722
+#, php-format
+msgid "%s fix moved to Live: visitors get its changes now."
+msgid_plural "%s fixes moved to Live: visitors get their changes now."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-screen-fixes.php:727
+msgid "Fix states saved."
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:817
+msgid "Low"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:819
+msgid "Medium"
+msgstr ""
+
+#: includes/admin/class-screen-fixes.php:821
+msgid "High"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:93
+#: includes/admin/class-screen-log.php:94
+#: includes/admin/class-screen-log.php:317
+msgid "Activity log"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:133
+msgid "Plugin activated"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:135
+msgid "Fix state changed"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:137
+msgid "Page scanned"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:139
+msgid "Page served unrepaired"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:141
+msgid "Fix skipped on a page"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:143
+msgid "Fix runs on a page again"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:145
+msgid "Settings saved"
+msgstr ""
+
+#. translators: 1: previous fix state, 2: new fix state
+#: includes/admin/class-screen-log.php:173
+#, php-format
+msgid "%1$s to %2$s"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:218
+msgid "Sorry, you are not allowed to export the activity log."
+msgstr ""
+
+#: includes/admin/class-screen-log.php:229
+msgid "This form has expired. Open the Activity log again and export once more."
+msgstr ""
+
+#: includes/admin/class-screen-log.php:266
+msgid "Date (UTC)"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:270
+msgid "From"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:271
+msgid "To"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:318
+msgid "A dated record of the fixes you turned on and what each scan found. The latest 5,000 entries are kept."
+msgstr ""
+
+#: includes/admin/class-screen-log.php:326
+msgid "Download as CSV"
+msgstr ""
+
+#. translators: %s: event name, for example "Page scanned"
+#: includes/admin/class-screen-log.php:330
+#, php-format
+msgid "Download \"%s\" entries as CSV"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:354
+msgid "Not logged in"
+msgstr ""
+
+#. translators: %d: user id
+#: includes/admin/class-screen-log.php:360
+#, php-format
+msgid "User %d (deleted)"
+msgstr ""
+
+#. translators: %s: plugin version
+#: includes/admin/class-screen-log.php:417
+#, php-format
+msgid "Version %s"
+msgstr ""
+
+#. translators: %d: post id
+#: includes/admin/class-screen-log.php:426
+#, php-format
+msgid "Post %d"
+msgstr ""
+
+#. translators: %s: names of the changed settings, separated by commas
+#: includes/admin/class-screen-log.php:453
+#, php-format
+msgid "Changed: %s"
+msgstr ""
+
+#. translators: 1: report source, for example "Scan"; 2: Live changes; 3: Preview changes; 4: changes of fixes that are Off; 5: items that need a person
+#: includes/admin/class-screen-log.php:470
+#: includes/admin/class-screen-overview.php:317
+#, php-format
+msgid "%1$s: %2$s Live, %3$s Preview, %4$s Off, %5$s need a person"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:478
+msgid "whole page"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:483
+msgid "content only: another plugin switched off the page buffer"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:486
+msgid "content only: page-level checks need WordPress 6.9 or later"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:489
+msgid "content only: the whole-page repair is switched off"
+msgstr ""
+
+#: includes/admin/class-screen-log.php:492
+msgid "content only"
+msgstr ""
+
+#. translators: A fixed disclaimer sentence. The percent sign belongs to the text; it is not a placeholder.
+#: includes/admin/class-screen-overview.php:69
+msgid "No plugin can provide 100% compliance with accessibility laws or standards such as the ADA, the European Accessibility Act or WCAG."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:83
+msgid "Needs WordPress 6.9 or later. Until then, repairs run on post content, template parts, widgets and menus only."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:85
+msgid "Switched off in Settings. Repairs run on post content, template parts, widgets and menus only."
+msgstr ""
+
+#. translators: 1: page address, 2: date and time of its report
+#: includes/admin/class-screen-overview.php:89
+#, php-format
+msgid "Switched off by another plugin on the last scanned pages. The report of %1$s (%2$s) covers post content, template parts, widgets and menus only, because another plugin switched off the WordPress page buffer (some page builders do). Page-wide repairs such as the skip link, the viewport and repeated ids do not run while it is switched off."
+msgstr ""
+
+#. translators: 1: page address, 2: date and time of its report
+#: includes/admin/class-screen-overview.php:97
+#, php-format
+msgid "Available. The newest report, of %1$s (%2$s), covers the whole page."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:102
+msgid "Available on this WordPress version. Scan a page to confirm that no other plugin switches it off."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:130
+msgid "Tagmend repairs common, machine-fixable accessibility errors in the HTML that your theme, page builder and WooCommerce print, on your own server, and lists what still needs a person."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:141
+msgid "Page caches"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:146
+msgid "What Tagmend cannot do"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:147
+msgid "Tagmend changes attributes in the HTML; it never adds, removes or moves your content. Alt text that describes an image well, clear link and button wording, colour choices and keyboard use of custom widgets still need a person: the reports list them."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:164
+msgid "Get started"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:165
+msgid "Nothing changes for your visitors until a fix is Live."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:168
+msgid "Scan your home page."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:169
+msgid "A scan runs in your own browser and changes nothing on the page."
+msgstr ""
+
+#. translators: %s: date and time of the report
+#: includes/admin/class-screen-overview.php:176
+#, php-format
+msgid "Done: scanned %s."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:183
+msgid "Open Reports to scan the home page"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:186
+msgid "Review the changes."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:187
+msgid "The report lists what each fix would change and what still needs a person. \"View repaired\" in the admin bar shows the page with the Live and Preview fixes applied."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:188
+msgid "Open Reports"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:188
+msgid "Open the report of the home page"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:191
+msgid "Go live."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:192
+msgid "Set the fixes you checked to Live, one by one or all Preview fixes at once."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:193
+msgid "Open Fixes"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:219
+msgid "Status"
+msgstr ""
+
+#. translators: %s: number of fixes
+#: includes/admin/class-screen-overview.php:228
+#, php-format
+msgid "%s fix"
+msgid_plural "%s fixes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-screen-overview.php:235
+#: includes/admin/class-screen-settings.php:147
+#: includes/admin/class-screen-settings.php:186
+#: includes/admin/class-screen-settings.php:189
+msgid "Whole-page repair"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:237
+msgid "Pages served unrepaired"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:240
+msgid "None recorded in the last 7 days."
+msgstr ""
+
+#. translators: %s: number of log entries
+#: includes/admin/class-screen-overview.php:246
+#, php-format
+msgid "%s entry in the last 7 days (each reason is recorded at most once an hour):"
+msgid_plural "%s entries in the last 7 days (each reason is recorded at most once an hour):"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: number of entries, 2: why the page was served unrepaired
+#: includes/admin/class-screen-overview.php:258
+#, php-format
+msgid "%1$s entry: %2$s"
+msgid_plural "%1$s entries: %2$s"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-screen-overview.php:267
+msgid "Show them in the Activity log"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:273
+#: includes/admin/class-screen-settings.php:91
+msgid "Settings"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:304
+msgid "Recent reports"
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:306
+msgid "No page has been scanned yet. Scan your home page from the Reports screen, or open any page of your site and use \"Scan this page\" in the admin bar."
+msgstr ""
+
+#: includes/admin/class-screen-overview.php:330
+msgid "All reports"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:143
+#: includes/admin/class-screen-report-details.php:173
+msgid "This form has expired. Open the report again and try once more."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:169
+msgid "Sorry, you are not allowed to change where fixes run."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:225
+msgid "Back to Reports"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:226
+#: includes/admin/class-screen-reports.php:127
+msgid "Report details"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:230
+msgid "This report no longer exists. It may have been deleted, or replaced when the list reached 500 pages."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:240
+msgid "Rescan this page"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:296
+msgid "This report was made with WP-CLI from a saved copy of the page."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:298
+msgid "Scans see the page as a logged-in administrator. The page can differ for visitors who are not logged in, for example in cart and account links, or in edit links that some themes add."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:301
+msgid "Changed since last scan:"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:301
+msgid "the page was edited after this report was made. Rescan it to see the current state."
+msgstr ""
+
+#. translators: %s: why the repair engine stopped, for example "the repair took longer than the time limit"
+#: includes/admin/class-screen-report-details.php:309
+#, php-format
+msgid "The repair engine left part of this page unchanged: %s. Changes and findings from that part are not in this report."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:321
+msgid "Edit this page"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:349
+msgid "Changes by fix"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:350
+msgid "Live: applied for every visitor. Preview: applied only in \"View repaired\". Off (would change): what the fix would do if you turned it on."
+msgstr ""
+
+#. translators: 1: name of the product image fix, 2: name of the menu label fix
+#: includes/admin/class-screen-report-details.php:357
+#, php-format
+msgid "Two fixes never appear in scan reports, because they work only through WordPress hooks while the page is built: \"%1$s\" and \"%2$s\". Open the page with \"View repaired\" to see their changes."
+msgstr ""
+
+#. translators: 1: number of changes listed, 2: number of changes found
+#: includes/admin/class-screen-report-details.php:371
+#, php-format
+msgid "Showing the first %1$s of %2$s changes."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:381
+msgid "No fix changes anything on this page."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:418
+msgid "This fix is not registered on the site now."
+msgstr ""
+
+#. translators: 1: fix state now, for example Preview; 2: WCAG success criterion numbers
+#: includes/admin/class-screen-report-details.php:423
+#, php-format
+msgid "State now: %1$s. WCAG %2$s."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:430
+msgid "Skipped on this page."
+msgstr ""
+
+#. translators: %s: fix name
+#: includes/admin/class-screen-report-details.php:440
+#, php-format
+msgid "Changes by \"%s\""
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:448
+#: includes/admin/class-screen-report-details.php:563
+msgid "Element"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:449
+msgid "Attribute"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:450
+msgid "Before"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:451
+msgid "After"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:452
+msgid "State in this report"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:460
+#: includes/admin/class-screen-report-details.php:461
+#: includes/checks/class-check-headings.php:175
+msgid "(empty)"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:460
+msgid "(none)"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:475
+msgid "Move to Live"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:487
+msgid "Stop skipping on this page"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:487
+msgid "Skip on this page"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:514
+msgid "The plugin does not change these. Each one needs a decision by someone who knows the page."
+msgstr ""
+
+#. translators: 1: number of items listed, 2: number of items found
+#: includes/admin/class-screen-report-details.php:521
+#, php-format
+msgid "Showing the first %1$s of %2$s items."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:531
+msgid "Nothing was found for a person to review on this page."
+msgstr ""
+
+#. translators: 1: check name, 2: WCAG success criterion number
+#: includes/admin/class-screen-report-details.php:552
+#, php-format
+msgid "%1$s (WCAG %2$s)"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:564
+msgid "What to check"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:575
+msgid "Edit in the Media Library"
+msgstr ""
+
+#. translators: %d: attachment id
+#: includes/admin/class-screen-report-details.php:580
+#, php-format
+msgid "(attachment %d)"
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:604
+msgid "Text contrast, except where an element sets both its text and background colour itself: it needs a check in the browser."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:605
+msgid "Keyboard traps and the focus order of widgets."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:606
+msgid "Captions and audio description."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:607
+msgid "Reflow and zoom behaviour."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:608
+msgid "Motion and timing."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:609
+msgid "How forms identify and describe errors."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:610
+msgid "Content added by JavaScript, for example the WooCommerce Cart and Checkout blocks and the mini-cart."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:611
+msgid "The language of parts of a page."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:612
+msgid "How easy the content is to read and understand."
+msgstr ""
+
+#: includes/admin/class-screen-report-details.php:615
+msgid "Not checked by this plugin"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:91
+#: includes/admin/class-screen-reports.php:92
+#: includes/admin/class-screen-reports.php:312
+msgid "Reports"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:210
+msgid "Sorry, you are not allowed to delete reports."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:221
+msgid "This link has expired. Open the Reports screen again and try once more."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:314
+msgid "Each report lists what the fixes change on one page and what still needs a person. A scan runs in your own browser, changes nothing on the page, and sees the page as a logged-in administrator."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:317
+msgid "Scan pages"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:318
+msgid "Scanning from this screen needs JavaScript. You can also open any page of your site and use \"Scan this page\" in the admin bar."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:321
+msgid "Scan suggested pages"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:322
+msgid "Scan home page"
+msgstr ""
+
+#. translators: %s: number of pages
+#: includes/admin/class-screen-reports.php:329
+#, php-format
+msgid "%s page: the home page, the five latest posts and pages, and with WooCommerce the shop, one product, the cart and the account page."
+msgid_plural "%s pages: the home page, the five latest posts and pages, and with WooCommerce the shop, one product, the cart and the account page."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/admin/class-screen-reports.php:341
+msgid "Address of a page on this site"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:344
+msgid "Scan this address"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:352
+msgid "Scanned pages"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:369
+msgid "Report deleted."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:370
+msgid "That report no longer exists."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:371
+msgid "The fix is Live now: visitors get its changes."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:372
+msgid "The fix could not be moved to Live on this site."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:373
+msgid "The fix is skipped on this page now."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:374
+msgid "The fix runs on this page again."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:375
+msgid "Fixes can be skipped only on single posts and pages."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:90
+#: includes/admin/class-screen-settings.php:179
+msgid "Tagmend Settings"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:149
+#: includes/admin/class-screen-settings.php:213
+#: includes/admin/class-screen-settings.php:216
+msgid "Admin bar menu"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:151
+#: includes/admin/class-screen-settings.php:227
+msgid "Size limit"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:153
+#: includes/admin/class-screen-settings.php:246
+msgid "Time limit"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:155
+#: includes/admin/class-screen-settings.php:265
+msgid "Never repair these paths"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:157
+#: includes/admin/class-screen-settings.php:279
+msgid "Delete all data when the plugin is deleted"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:195
+msgid "Repair the whole page, including the head, the theme header and footer, skip links and repeated form ids"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:201
+msgid "Uses the WordPress page buffer. When it is off, repairs run on post content, template parts, widgets and menus only, and the fixes that need the whole page do not run."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:202
+msgid "Needs WordPress 6.9 or later. On this version, repairs run on post content, template parts, widgets and menus only."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:207
+msgid "On the last scanned pages another plugin switched off the WordPress page buffer (some page builders do), so the whole-page repair did not run there. The Overview names the report."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:220
+msgid "Show the Tagmend menu in the admin bar on your site"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:222
+msgid "It holds View original, View repaired, the changes on the page and Scan this page. Only administrators see it."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:230
+msgid "KB"
+msgstr ""
+
+#. translators: 1: smallest value, 2: largest value
+#: includes/admin/class-screen-settings.php:236
+#, php-format
+msgid "Pages larger than this are served unrepaired. From %1$s to %2$s KB."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:249
+msgid "milliseconds"
+msgstr ""
+
+#. translators: 1: smallest value, 2: largest value
+#: includes/admin/class-screen-settings.php:255
+#, php-format
+msgid "When repairing a page takes longer than this, the page is served unrepaired. From %1$s to %2$s milliseconds."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:268
+msgid "One path per line, starting with /, relative to your site address, for example /checkout/. Pages whose path starts with one of these are never repaired and cannot be scanned."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:272
+#: includes/admin/class-screen-settings.php:275
+msgid "Uninstall"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:281
+msgid "When this is on, deleting the plugin from the Plugins screen also deletes its settings, reports, activity log and per-page skips. When it is off, they stay for a later reinstall. Deactivating never deletes anything."
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:287
+msgid "Save settings"
+msgstr ""
+
+#: includes/admin/class-screen-settings.php:313
+msgid "Settings saved."
+msgstr ""
+
+#. translators: %s: what is wrong with the alt text, for example: Alt text looks like a file name.
+#: includes/checks/class-check-alt-quality.php:166
+#, php-format
+msgid "Media Library alt text: %s"
+msgstr ""
+
+#. translators: %s: the alt text
+#: includes/checks/class-check-alt-quality.php:186
+#, php-format
+msgid "Alt text looks like a file name: \"%s\"."
+msgstr ""
+
+#. translators: %s: the opening words of the alt text, for example "Image of"
+#: includes/checks/class-check-alt-quality.php:190
+#, php-format
+msgid "Alt text starts with \"%s\"; screen readers already say it is an image."
+msgstr ""
+
+#. translators: %d: number of characters
+#: includes/checks/class-check-alt-quality.php:195
+#, php-format
+msgid "Alt text is %d characters long; keep it under 150 and put longer descriptions in the page."
+msgstr ""
+
+#: includes/checks/class-check-alt-quality.php:209
+msgid "Alt text repeats the link or button text, so it is read twice."
+msgstr ""
+
+#: includes/checks/class-check-alt-quality.php:213
+msgid "Alt text repeats the caption, so it is read twice."
+msgstr ""
+
+#. translators: %s: the link text
+#: includes/checks/class-check-ambiguous-links.php:126
+#, php-format
+msgid "Link text \"%s\" does not say where the link goes: use words that name the destination."
+msgstr ""
+
+#: includes/checks/class-check-ambiguous-links.php:142
+msgid "Click here"
+msgstr ""
+
+#: includes/checks/class-check-ambiguous-links.php:143
+msgid "Here"
+msgstr ""
+
+#: includes/checks/class-check-autoplay-media.php:88
+msgid "This media plays by itself, is not muted and has no controls to pause or stop it."
+msgstr ""
+
+#: includes/checks/class-check-autoplay-media.php:91
+msgid "This media plays by itself and is not muted: start it muted, or let visitors start it."
+msgstr ""
+
+#: includes/checks/class-check-autoplay-media.php:94
+msgid "This media plays by itself and has no controls to pause or stop it."
+msgstr ""
+
+#. translators: 1: contrast ratio such as 2.85, 2: text colour / background colour, for example #999999 / #ffffff
+#: includes/checks/class-check-contrast.php:721
+#, php-format
+msgid "Contrast %1$s:1 (%2$s) is below 3:1 for large text."
+msgstr ""
+
+#. translators: 1: contrast ratio such as 4.48, 2: text colour / background colour, for example #777777 / #ffffff
+#: includes/checks/class-check-contrast.php:725
+#, php-format
+msgid "Contrast %1$s:1 (%2$s) is below 4.5:1 for normal-size text."
+msgstr ""
+
+#. translators: 1: contrast ratio such as 2.85, 2: text colour / background colour, for example #999999 / #ffffff
+#: includes/checks/class-check-contrast.php:729
+#, php-format
+msgid "Contrast %1$s:1 (%2$s) is below 4.5:1 for normal text and 3:1 for large text."
+msgstr ""
+
+#. translators: 1: contrast ratio such as 3.95, 2: text colour / background colour, for example #777777 / #ffffff
+#: includes/checks/class-check-contrast.php:732
+#, php-format
+msgid "Contrast %1$s:1 (%2$s) is below 4.5:1 for normal text; large text needs 3:1, and no size is set here."
+msgstr ""
+
+#. translators: 1: an id attribute value, 2: number of elements carrying it, 2 or more
+#: includes/checks/class-check-duplicate-ids.php:98
+#, php-format
+msgid "The id \"%1$s\" is used by %2$d elements; labels and ARIA references reach only the first one."
+msgstr ""
+
+#: includes/checks/class-check-field-visible-label.php:90
+msgid "Field has no visible label: add a visible label in the form settings."
+msgstr ""
+
+#. translators: %s: the heading text
+#: includes/checks/class-check-headings.php:138
+#, php-format
+msgid "More than one h1 heading on this page: \"%s\"."
+msgstr ""
+
+#: includes/checks/class-check-headings.php:145
+msgid "This page has no h1 heading."
+msgstr ""
+
+#. translators: 1: level of the heading before, for example 2; 2: level of this heading, for example 4; 3: the heading text
+#: includes/checks/class-check-headings.php:156
+#, php-format
+msgid "Heading level jumps from h%1$d to h%2$d: \"%3$s\"."
+msgstr ""
+
+#: includes/checks/class-check-landmarks.php:95
+msgid "This page has no main landmark: put the main content in a main element."
+msgstr ""
+
+#. translators: %d: number of main landmarks, 2 or more
+#: includes/checks/class-check-landmarks.php:103
+#, php-format
+msgid "This page has %d main landmarks; a page should have one."
+msgstr ""
+
+#. translators: %d: number of navigation landmarks without a label, 2 or more
+#: includes/checks/class-check-landmarks.php:125
+#, php-format
+msgid "%d navigation landmarks have no label: give each menu a name, for example with aria-label."
+msgstr ""
+
+#. translators: %s: an ARIA role, for example "button"
+#: includes/checks/class-check-non-native-controls.php:146
+#, php-format
+msgid "Element with role=\"%s\" cannot be reached with the keyboard: use a real button or link, or add tabindex=\"0\" and key handling."
+msgstr ""
+
+#: includes/checks/class-check-non-native-controls.php:156
+msgid "Element has a click handler but is not a control: keyboard and screen-reader users may not be able to use it."
+msgstr ""
+
+#: includes/checks/class-check-page-title.php:111
+msgid "This page has no title element."
+msgstr ""
+
+#: includes/checks/class-check-page-title.php:113
+msgid "The page title is empty."
+msgstr ""
+
+#. translators: %d: number of table rows, 2 or more
+#: includes/checks/class-check-tables.php:131
+#, php-format
+msgid "Table with %d rows has no header cells: if it holds data, mark its header row or column with th elements."
+msgstr ""
+
+#: includes/checks/class-check-undescribed-images.php:125
+msgid "No alt text, and its Media Library entry has none: add it in the Media Library, or alt=\"\" where it is inserted if it is decorative."
+msgstr ""
+
+#: includes/checks/class-check-undescribed-images.php:127
+msgid "No alt text. Not looked up in the Media Library: the limit of lookups per page was reached."
+msgstr ""
+
+#: includes/checks/class-check-undescribed-images.php:129
+msgid "No alt text, and the image was not found in the Media Library: add alt text where the image is inserted."
+msgstr ""
+
+#: includes/class-install.php:92
+msgid "Tagmend – Accessibility Fixes works on each site of a network separately, so it cannot be activated for the whole network. Activate it from the Plugins screen of each site where you want it."
+msgstr ""
+
+#: includes/class-plugin.php:312
+msgid "Accessibility Fixes"
+msgstr ""
+
+#: includes/class-plugin.php:321
+msgid "Overview"
+msgstr ""
+
+#: includes/class-privacy.php:48
+msgid "This site uses Tagmend – Accessibility Fixes to repair common accessibility errors in the HTML of its pages."
+msgstr ""
+
+#: includes/class-privacy.php:49
+msgid "The plugin stores scan reports about the pages of this site in the site database: element names and attributes such as the tag, class, link path and the text the plugin added, never form values. It also keeps an activity log of changes to its fixes and settings and of page scans, with the WordPress user IDs of the administrators who made them."
+msgstr ""
+
+#: includes/class-privacy.php:50
+msgid "The plugin sets no cookies, collects nothing about visitors and sends nothing off this site."
+msgstr ""
+
+#: includes/class-registry.php:175
+#: includes/class-registry.php:187
+msgid "Not available on this site"
+msgstr ""
+
+#: includes/class-registry.php:180
+msgid "Needs WordPress 6.9 or later"
+msgstr ""
+
+#: includes/class-registry.php:184
+msgid "Needs WooCommerce"
+msgstr ""
+
+#: includes/class-rest-controller.php:83
+msgid "Absolute URLs on this site to scan."
+msgstr ""
+
+#: includes/class-rest-controller.php:100
+msgid "Absolute URL of a page on this site."
+msgstr ""
+
+#. translators: %d: largest number of URLs in one request
+#: includes/class-rest-controller.php:132
+#, php-format
+msgid "Send between 1 and %d URLs."
+msgstr ""
+
+#: includes/class-rest-controller.php:156
+msgid "Only pages on this site can be scanned."
+msgstr ""
+
+#: includes/class-rest-controller.php:177
+msgid "Only pages on this site have reports."
+msgstr ""
+
+#: includes/class-rest-controller.php:185
+msgid "This page has not been scanned yet."
+msgstr ""
+
+#. translators: 1: number of lines, 2: longest allowed path in characters, 3: most paths kept
+#: includes/class-settings.php:296
+#, php-format
+msgid "%1$s line of \"Never repair these paths\" was not saved: each path must start with / and be at most %2$s characters long, and at most %3$s paths are kept."
+msgid_plural "%1$s lines of \"Never repair these paths\" were not saved: each path must start with / and be at most %2$s characters long, and at most %3$s paths are kept."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/fixes/class-fix-aria-hidden-focus.php:105
+msgid "Take focusable items in hidden content out of the tab order"
+msgstr ""
+
+#: includes/fixes/class-fix-aria-hidden-focus.php:114
+msgid "Takes links, buttons and fields inside other content hidden from screen readers out of the tab order. Starts Off: if a script later shows that content without restoring the tab order, keyboard users cannot reach those controls. Before you set it Live, test every page it changes with the keyboard: open each menu, panel and dialog and check that Tab reaches every control in it."
+msgstr ""
+
+#: includes/fixes/class-fix-button-name.php:65
+msgid "Names for empty buttons"
+msgstr ""
+
+#: includes/fixes/class-fix-button-name.php:74
+msgid "Names buttons that have no text, such as search, menu, close and icon buttons, with an aria-label, and gives empty Submit buttons a value. Buttons it cannot name are listed in the report."
+msgstr ""
+
+#: includes/fixes/class-fix-button-name.php:187
+msgid "Submit"
+msgstr ""
+
+#: includes/fixes/class-fix-button-name.php:195
+msgid "Button has no text, and no label source fits: add visible text or an aria-label."
+msgstr ""
+
+#: includes/fixes/class-fix-button-name.php:209
+#: includes/fixes/class-fix-field-label.php:209
+#: includes/fixes/class-fix-link-name.php:307
+msgid "Search"
+msgstr ""
+
+#: includes/fixes/class-fix-button-name.php:213
+#: includes/fixes/class-fix-button-name.php:219
+#: includes/fixes/class-fix-link-name.php:310
+msgid "Menu"
+msgstr ""
+
+#: includes/fixes/class-fix-button-name.php:224
+#: includes/fixes/class-fix-link-name.php:311
+msgid "Close"
+msgstr ""
+
+#: includes/fixes/class-fix-decorative-icons.php:69
+msgid "Hide decorative icons in links and buttons"
+msgstr ""
+
+#: includes/fixes/class-fix-decorative-icons.php:78
+msgid "Hides icon-font glyphs and unlabelled SVG images inside links and buttons that already have a name (aria-hidden=\"true\"), so screen readers do not read them as stray characters."
+msgstr ""
+
+#: includes/fixes/class-fix-decorative-icons.php:359
+msgid "SVG image with role=\"img\" has no name: add a title element or an aria-label."
+msgstr ""
+
+#: includes/fixes/class-fix-duplicate-field-ids.php:49
+msgid "Unique ids for repeated form fields"
+msgstr ""
+
+#: includes/fixes/class-fix-duplicate-field-ids.php:58
+msgid "Gives a form field whose id is repeated on the page an id of its own, and updates the label and ARIA references in the same form. Starts Off because scripts and styles that select the old id no longer match the renamed field."
+msgstr ""
+
+#: includes/fixes/class-fix-empty-heading.php:66
+msgid "Hide empty headings"
+msgstr ""
+
+#: includes/fixes/class-fix-empty-heading.php:75
+msgid "Hides headings that have no text from screen readers. A heading whose removal would leave a gap in the heading levels stays and is listed in the report."
+msgstr ""
+
+#. translators: 1: level of the empty heading, for example 2; 2: level of the next heading, for example 3
+#: includes/fixes/class-fix-empty-heading.php:218
+#, php-format
+msgid "Empty h%1$d heading left in place: hiding it would make the next heading, h%2$d, skip a level. Add text to it or remove it."
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:54
+msgid "Names for form fields without a label"
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:63
+msgid "Names form fields that have no label with an aria-label from their placeholder, from a search field or from a known field name such as email or phone. The report still lists these fields, because the name is not visible."
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:178
+msgid "Form field has no label, and no label source fits: add a visible label in the form settings."
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:235
+#: includes/fixes/class-fix-link-name.php:222
+#: includes/fixes/class-fix-link-name.php:312
+msgid "Email"
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:236
+msgid "Phone"
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:237
+msgid "Message"
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:238
+msgid "Quantity"
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:243
+msgid "Name"
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:250
+msgid "Coupon code"
+msgstr ""
+
+#: includes/fixes/class-fix-field-label.php:251
+msgid "Postcode"
+msgstr ""
+
+#: includes/fixes/class-fix-focus-visible.php:49
+msgid "Visible focus outline"
+msgstr ""
+
+#: includes/fixes/class-fix-focus-visible.php:58
+msgid "Adds a small stylesheet that draws a 2-pixel outline in the text colour around the element that has keyboard focus. Starts Off because it changes how the site looks: set it to Preview, open a page with \"View repaired\" in the admin bar and press Tab to see the outline before you set it Live."
+msgstr ""
+
+#: includes/fixes/class-fix-hidden-duplicate-links.php:53
+msgid "Take hidden duplicate links out of the tab order"
+msgstr ""
+
+#: includes/fixes/class-fix-hidden-duplicate-links.php:62
+msgid "Takes links that are hidden from screen readers out of the tab order when a visible link nearby goes to the same address, such as the image link of a card next to its title link."
+msgstr ""
+
+#: includes/fixes/class-fix-html-lang.php:47
+msgid "Page language"
+msgstr ""
+
+#: includes/fixes/class-fix-html-lang.php:56
+msgid "Sets the language of the page from the site language when the html element has no lang attribute or a malformed one (en_US becomes en-US). A valid language set by the theme or a translation plugin is never changed."
+msgstr ""
+
+#: includes/fixes/class-fix-html-lang.php:132
+msgid "The site language is not a valid language tag, so lang was not set."
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:41
+msgid "Titles for embedded frames"
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:50
+msgid "Gives embedded frames without a title one that names the service, such as \"YouTube video\", or \"Embedded content from\" followed by the host name."
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:140
+msgid "Embedded content"
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:147
+msgid "YouTube video"
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:150
+msgid "Vimeo video"
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:153
+msgid "Map"
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:156
+msgid "Spotify player"
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:159
+msgid "SoundCloud player"
+msgstr ""
+
+#: includes/fixes/class-fix-iframe-title.php:162
+msgid "Calendly booking"
+msgstr ""
+
+#. translators: %s: host name of the embedded page, for example www.example.com
+#: includes/fixes/class-fix-iframe-title.php:167
+#, php-format
+msgid "Embedded content from %s"
+msgstr ""
+
+#: includes/fixes/class-fix-img-alt-empty-library.php:51
+msgid "Empty image alt text from the Media Library"
+msgstr ""
+
+#: includes/fixes/class-fix-img-alt-empty-library.php:60
+msgid "Replaces an empty alt attribute (alt=\"\") with the alt text saved in the Media Library. Starts Off: the block editor writes alt=\"\" for images whose alt text was left empty when they were inserted, which is also how an author marks an image as decorative, so this fix can undo a deliberate choice. Check what it would change in a report before you turn it on."
+msgstr ""
+
+#: includes/fixes/class-fix-img-alt-library.php:50
+msgid "Missing image alt text from the Media Library"
+msgstr ""
+
+#: includes/fixes/class-fix-img-alt-library.php:59
+msgid "Gives images that have no alt attribute the alt text saved for them in the Media Library. Images whose Media Library alt text is empty are listed in the report instead."
+msgstr ""
+
+#: includes/fixes/class-fix-img-in-named-control.php:49
+msgid "Images inside named links and buttons"
+msgstr ""
+
+#: includes/fixes/class-fix-img-in-named-control.php:58
+msgid "Gives an image without alt text inside a link or button that already has text an empty alt (alt=\"\"), so screen readers neither read the file name nor repeat the link text."
+msgstr ""
+
+#: includes/fixes/class-fix-link-name.php:70
+msgid "Names for empty links"
+msgstr ""
+
+#: includes/fixes/class-fix-link-name.php:79
+msgid "Names links that have no text, such as logo, social, email, phone, cart and icon links, with an aria-label from a reliable source: the site name, the email address or phone number, the social network, the icon, or the cart or account page. Links it cannot name are listed in the report."
+msgstr ""
+
+#: includes/fixes/class-fix-link-name.php:198
+msgid "Link has no text, and no label source fits: add visible text, or an aria-label that says where it goes."
+msgstr ""
+
+#. translators: %s: the site name
+#: includes/fixes/class-fix-link-name.php:215
+#, php-format
+msgid "%s home page"
+msgstr ""
+
+#. translators: %s: an email address
+#: includes/fixes/class-fix-link-name.php:225
+#, php-format
+msgid "Email %s"
+msgstr ""
+
+#: includes/fixes/class-fix-link-name.php:230
+#: includes/fixes/class-fix-link-name.php:313
+msgid "Call"
+msgstr ""
+
+#. translators: %s: a phone number
+#: includes/fixes/class-fix-link-name.php:233
+#, php-format
+msgid "Call %s"
+msgstr ""
+
+#: includes/fixes/class-fix-link-name.php:308
+#: includes/fixes/class-fix-link-name.php:399
+msgid "Cart"
+msgstr ""
+
+#: includes/fixes/class-fix-link-name.php:309
+#: includes/fixes/class-fix-link-name.php:402
+msgid "My account"
+msgstr ""
+
+#: includes/fixes/class-fix-nav-labels.php:45
+msgid "Menu location names for theme menus"
+msgstr ""
+
+#: includes/fixes/class-fix-nav-labels.php:54
+msgid "Gives theme menus printed in a nav element the name of their menu location as aria-label, so screen-reader users can tell several menus apart."
+msgstr ""
+
+#: includes/fixes/class-fix-new-tab-note.php:66
+msgid "Say when a link opens a new tab"
+msgstr ""
+
+#: includes/fixes/class-fix-new-tab-note.php:75
+msgid "Tells screen-reader users that a link opens in a new tab, through a hidden note connected with aria-describedby. Starts Off because WCAG places this at its highest level, which most sites do not aim for."
+msgstr ""
+
+#: includes/fixes/class-fix-new-tab-note.php:156
+msgid "opens in a new tab"
+msgstr ""
+
+#: includes/fixes/class-fix-positive-tabindex.php:44
+msgid "Remove positive tabindex values"
+msgstr ""
+
+#: includes/fixes/class-fix-positive-tabindex.php:53
+msgid "Sets tabindex values above 0 to 0, so the keyboard moves through the page in reading order."
+msgstr ""
+
+#: includes/fixes/class-fix-product-img-alt-name.php:51
+msgid "Product name as alt text for product images"
+msgstr ""
+
+#: includes/fixes/class-fix-product-img-alt-name.php:60
+msgid "On a single product page, uses the product name as alt text for the images of that product when their Media Library alt text is empty. Starts Off because every gallery image of a product gets the same text."
+msgstr ""
+
+#: includes/fixes/class-fix-read-more-context.php:58
+msgid "Post titles for \"Read more\" links"
+msgstr ""
+
+#: includes/fixes/class-fix-read-more-context.php:67
+msgid "Adds the post title to \"Read more\" style links, for example \"Read more: Opening hours\", keeping the visible text at the start of the name."
+msgstr ""
+
+#: includes/fixes/class-fix-read-more-context.php:222
+msgid "Read more"
+msgstr ""
+
+#: includes/fixes/class-fix-read-more-context.php:223
+msgid "Continue reading"
+msgstr ""
+
+#: includes/fixes/class-fix-read-more-context.php:225
+msgid "More"
+msgstr ""
+
+#: includes/fixes/class-fix-skip-link-target.php:68
+msgid "Skip links whose target is missing"
+msgstr ""
+
+#: includes/fixes/class-fix-skip-link-target.php:77
+msgid "Repairs an existing skip link whose target does not exist on the page, by pointing it at the main content."
+msgstr ""
+
+#: includes/fixes/class-fix-skip-link.php:136
+msgid "Skip link when the page has none"
+msgstr ""
+
+#: includes/fixes/class-fix-skip-link.php:145
+msgid "Adds a \"Skip to content\" link at the start of pages that have none, pointing at the main content; it shows when it receives keyboard focus. Nothing is added where WordPress or the theme already prints a skip link."
+msgstr ""
+
+#: includes/fixes/class-fix-skip-link.php:235
+msgid "Skip to content"
+msgstr ""
+
+#: includes/fixes/class-fix-skip-link.php:408
+msgid "No skip link could be added: the theme does not call wp_body_open()."
+msgstr ""
+
+#: includes/fixes/class-fix-skip-link.php:409
+msgid "This page has no skip link among its first focusable elements."
+msgstr ""
+
+#: includes/fixes/class-fix-viewport-zoom.php:41
+msgid "Allow zooming"
+msgstr ""
+
+#: includes/fixes/class-fix-viewport-zoom.php:50
+msgid "Removes user-scalable=no and a maximum-scale below 2 from the viewport tag, so visitors can zoom the page on phones and tablets."
+msgstr ""
+
+#: assets/js/admin.js:129
+msgid "the site did not answer."
+msgstr ""
+
+#. translators: 1: Live changes, 2: Preview changes, 3: changes of fixes that are Off, 4: items that need a person
+#: assets/js/admin.js:158
+#, js-format
+msgid "%1$d Live, %2$d Preview, %3$d Off (would change), %4$d need a person."
+msgstr ""
+
+#: assets/js/admin.js:166
+msgid "Content only: page-level checks need WordPress 6.9 or later."
+msgstr ""
+
+#: assets/js/admin.js:167
+msgid "Content only: post content, template parts, widgets and menus."
+msgstr ""
+
+#: assets/js/admin.js:181
+msgid "Not scanned (excluded path)."
+msgstr ""
+
+#: assets/js/admin.js:191
+msgid "Not scanned: the page could not be loaded."
+msgstr ""
+
+#: assets/js/admin.js:194
+msgid "This page redirects; open it and use \"Scan this page\" in the admin bar."
+msgstr ""
+
+#. translators: %d: HTTP status code, for example 404
+#: assets/js/admin.js:205
+#, js-format
+msgid "Not scanned: the page answered with HTTP status %d."
+msgstr ""
+
+#: assets/js/admin.js:215
+msgid "Not scanned: no report was stored for this page."
+msgstr ""
+
+#: assets/js/admin.js:234
+msgid "There is no page to scan."
+msgstr ""
+
+#. translators: %s: reason, for example "Only pages on this site can be scanned."
+#: assets/js/admin.js:251
+#, js-format
+msgid "The scan could not start: %s"
+msgstr ""
+
+#. translators: %d: number of pages
+#: assets/js/admin.js:258
+#, js-format
+msgid "Scanning %d page. This can take a moment."
+msgid_plural "Scanning %d pages. This can take a moment."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: page number, 2: number of pages, 3: page address, 4: result
+#: assets/js/admin.js:272
+#, js-format
+msgid "Page %1$d of %2$d, %3$s: %4$s"
+msgstr ""
+
+#. translators: 1: pages scanned, 2: pages sent for scanning
+#: assets/js/admin.js:287
+#, js-format
+msgid "Scan finished: %1$d of %2$d pages scanned. Reload the screen to see the updated reports."
+msgstr ""
+
+#: assets/js/admin.js:307
+msgid "Reload to see the updated reports"
+msgstr ""
