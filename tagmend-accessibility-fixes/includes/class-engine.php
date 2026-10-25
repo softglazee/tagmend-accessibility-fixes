@@ -1,0 +1,841 @@
+<?php
+/**
+ * The repair engine: analyse, plan, apply, check, or return the input.
+ *
+ * @package SoftGlaze\AccessibilityRepair
+ */
+
+namespace SoftGlaze\AccessibilityRepair;
+
+use Throwable;
+use WP_HTML_Tag_Processor;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Two passes over one string (blueprint section 3.2, decision D5). The analyse
+ * pass walks every token with next_token(), numbers tag openers, keeps a small
+ * stack of the elements that matter and lets each fix plan attribute edits.
+ * The apply pass walks the same string with the same iterator and the same
+ * opener predicate and calls set_attribute() at the planned ordinals. Any
+ * guard, mismatch or throwable returns the input string unchanged.
+ *
+ * The engine has no side effects: it registers no hooks, writes nothing and
+ * prints nothing. What happened is in recorder() after each run.
+ */
+class Engine {
+
+	const MODE_VISITOR        = 'visitor';
+	const MODE_ADMIN_REPAIRED = 'admin_repaired';
+	const MODE_ADMIN_ORIGINAL = 'admin_original';
+	const MODE_SCAN           = 'scan';
+
+	const SCOPE_PAGE    = 'page';
+	const SCOPE_CONTENT = 'content';
+
+	const STATES = array( 'off', 'preview', 'live' );
+
+	/**
+	 * Per mode: fix states that are analysed, and fix states whose edits are applied.
+	 */
+	const MODE_STATES = array(
+		'visitor'        => array(
+			'analyse' => array( 'live' ),
+			'apply'   => array( 'live' ),
+		),
+		'admin_repaired' => array(
+			'analyse' => array( 'live', 'preview', 'off' ),
+			'apply'   => array( 'live', 'preview' ),
+		),
+		'admin_original' => array(
+			'analyse' => array(),
+			'apply'   => array(),
+		),
+		'scan'           => array(
+			'analyse' => array( 'live', 'preview', 'off' ),
+			'apply'   => array(),
+		),
+	);
+
+	const DEFAULT_MAX_BYTES = 2097152;
+	const DEFAULT_MAX_MS    = 100;
+
+	/**
+	 * The clock is read once per this many tokens.
+	 */
+	const CLOCK_EVERY = 256;
+
+	/**
+	 * The apply pass hands its pending updates to the processor after this many edits.
+	 */
+	const FLUSH_EVERY = 16;
+
+	/**
+	 * Elements kept on the stack; true when the element collects text for its name.
+	 */
+	const TRACKED = array(
+		'A'       => true,
+		'BUTTON'  => true,
+		'LABEL'   => true,
+		'H1'      => true,
+		'H2'      => true,
+		'H3'      => true,
+		'H4'      => true,
+		'H5'      => true,
+		'H6'      => true,
+		'FORM'    => false,
+		'ARTICLE' => false,
+		'NAV'     => false,
+		'MAIN'    => false,
+		'SVG'     => false,
+	);
+
+	const HEADINGS = array(
+		'H1' => true,
+		'H2' => true,
+		'H3' => true,
+		'H4' => true,
+		'H5' => true,
+		'H6' => true,
+	);
+
+	/**
+	 * Elements without an end tag.
+	 */
+	const VOID = array(
+		'AREA'     => true,
+		'BASE'     => true,
+		'BASEFONT' => true,
+		'BGSOUND'  => true,
+		'BR'       => true,
+		'COL'      => true,
+		'EMBED'    => true,
+		'FRAME'    => true,
+		'HR'       => true,
+		'IMG'      => true,
+		'INPUT'    => true,
+		'KEYGEN'   => true,
+		'LINK'     => true,
+		'META'     => true,
+		'PARAM'    => true,
+		'SOURCE'   => true,
+		'TRACK'    => true,
+		'WBR'      => true,
+	);
+
+	/**
+	 * Elements whose contents and end tag belong to the opening token.
+	 */
+	const RAW = array(
+		'IFRAME'   => true,
+		'NOEMBED'  => true,
+		'NOFRAMES' => true,
+		'SCRIPT'   => true,
+		'STYLE'    => true,
+		'TEXTAREA' => true,
+		'TITLE'    => true,
+		'XMP'      => true,
+	);
+
+	/**
+	 * Fixes by id.
+	 *
+	 * @var Fix[]
+	 */
+	private $fixes = array();
+
+	/**
+	 * Fix id => 'off' | 'preview' | 'live'.
+	 *
+	 * @var string[]
+	 */
+	private $states = array();
+
+	/**
+	 * Size guard in bytes, before the filter.
+	 *
+	 * @var int
+	 */
+	private $max_bytes;
+
+	/**
+	 * Time guard in milliseconds, before the filter.
+	 *
+	 * @var float
+	 */
+	private $max_ms;
+
+	/**
+	 * Recorder of the last run.
+	 *
+	 * @var Recorder
+	 */
+	private $recorder;
+
+	/**
+	 * The reused token handed to fixes.
+	 *
+	 * @var Token
+	 */
+	private $token;
+
+	/**
+	 * Open tracked elements, outermost first (analyse pass only).
+	 *
+	 * @var Element[]
+	 */
+	private $stack = array();
+
+	/**
+	 * Upper-case tag => number of open frames with that tag.
+	 *
+	 * @var int[]
+	 */
+	private $open_tags = array();
+
+	/**
+	 * Number of open frames that collect text.
+	 *
+	 * @var int
+	 */
+	private $collecting = 0;
+
+	/**
+	 * Tag => fixes listening to it, for the current run.
+	 *
+	 * @var array
+	 */
+	private $listeners = array();
+
+	/**
+	 * Fixes listening to every tag, for the current run.
+	 *
+	 * @var Fix[]
+	 */
+	private $listen_all = array();
+
+	/**
+	 * Index of the current run.
+	 *
+	 * @var Document_Index|null
+	 */
+	private $index = null;
+
+	/**
+	 * Plan of the current run.
+	 *
+	 * @var Plan|null
+	 */
+	private $plan = null;
+
+	/**
+	 * Creates an engine for a set of fixes and their states.
+	 *
+	 * @param Fix[]    $fixes   Fix objects; duplicates by id are ignored.
+	 * @param string[] $states  Fix id => state; missing or unknown states count as 'off'.
+	 * @param array    $options Optional 'max_bytes' (int) and 'max_ms' (number), filterable per run.
+	 */
+	public function __construct( array $fixes, array $states = array(), array $options = array() ) {
+		foreach ( $fixes as $fix ) {
+			if ( ! $fix instanceof Fix ) {
+				continue;
+			}
+			$id = $fix->id();
+			if ( '' !== $id && ! isset( $this->fixes[ $id ] ) ) {
+				$this->fixes[ $id ] = $fix;
+			}
+		}
+		foreach ( $this->fixes as $id => $fix ) {
+			$state               = isset( $states[ $id ] ) ? $states[ $id ] : 'off';
+			$this->states[ $id ] = in_array( $state, self::STATES, true ) ? $state : 'off';
+		}
+
+		$this->max_bytes = isset( $options['max_bytes'] ) ? (int) $options['max_bytes'] : self::DEFAULT_MAX_BYTES;
+		$this->max_ms    = isset( $options['max_ms'] ) ? (float) $options['max_ms'] : (float) self::DEFAULT_MAX_MS;
+		$this->recorder  = new Recorder( false );
+		$this->token     = new Token();
+	}
+
+	/**
+	 * First-activation states: recommended fixes in Preview, the rest Off.
+	 *
+	 * @param Fix[] $fixes Fix objects.
+	 * @return string[] Fix id => state.
+	 */
+	public static function default_states( array $fixes ): array {
+		$states = array();
+		foreach ( $fixes as $fix ) {
+			if ( $fix instanceof Fix ) {
+				$states[ $fix->id() ] = $fix->recommended() ? 'preview' : 'off';
+			}
+		}
+		return $states;
+	}
+
+	/**
+	 * Repairs a document or fragment, or returns it unchanged.
+	 *
+	 * @param string $html  HTML to repair.
+	 * @param string $mode  One of the MODE_* constants.
+	 * @param string $scope SCOPE_PAGE for a whole document, SCOPE_CONTENT for a fragment.
+	 * @return string The repaired HTML, or the input byte for byte.
+	 */
+	public function run( string $html, string $mode = self::MODE_VISITOR, string $scope = self::SCOPE_PAGE ): string {
+		$this->recorder = new Recorder( self::MODE_VISITOR !== $mode );
+		$this->recorder->set_engine(
+			array(
+				'scope'         => $scope,
+				'mode'          => $mode,
+				'ms'            => 0.0,
+				'bytes'         => strlen( $html ),
+				'wp'            => get_bloginfo( 'version' ),
+				'tokens'        => 0,
+				'openers'       => 0,
+				'openers_apply' => null,
+				'edits_planned' => 0,
+				'edits_applied' => 0,
+			)
+		);
+
+		if ( '' === $html || ! isset( self::MODE_STATES[ $mode ] ) || ( self::SCOPE_PAGE !== $scope && self::SCOPE_CONTENT !== $scope ) ) {
+			return $html;
+		}
+
+		$fixes = $this->active_fixes( $mode, $scope );
+		if ( empty( $fixes ) ) {
+			return $html;
+		}
+
+		$start = hrtime( true );
+		try {
+			$output = $this->process( $html, $mode, $scope, $fixes, $start );
+		} catch ( Throwable $throwable ) {
+			$this->recorder->fallback( 'exception', get_class( $throwable ) );
+			$output = null;
+		}
+		$this->end_run();
+		$this->recorder->set_engine( array( 'ms' => round( ( hrtime( true ) - $start ) / 1e6, 3 ) ) );
+
+		if ( null === $output ) {
+			$this->recorder->discard_changes();
+			return $html;
+		}
+		return $output;
+	}
+
+	/**
+	 * Changes, findings, fallback and timing of the last run.
+	 *
+	 * @return Recorder
+	 */
+	public function recorder(): Recorder {
+		return $this->recorder;
+	}
+
+	/**
+	 * The fixes, by id.
+	 *
+	 * @return Fix[]
+	 */
+	public function fixes(): array {
+		return $this->fixes;
+	}
+
+	/**
+	 * The state of a fix.
+	 *
+	 * @param string $fix_id Fix id.
+	 * @return string
+	 */
+	public function state_of( string $fix_id ): string {
+		return isset( $this->states[ $fix_id ] ) ? $this->states[ $fix_id ] : 'off';
+	}
+
+	/**
+	 * Creates the processor for a pass. Both passes read the same input.
+	 *
+	 * @param string $html Input HTML.
+	 * @param string $pass 'analyse' or 'apply'.
+	 * @return WP_HTML_Tag_Processor
+	 */
+	protected function create_processor( string $html, string $pass ): WP_HTML_Tag_Processor {
+		unset( $pass );
+		return new WP_HTML_Tag_Processor( $html );
+	}
+
+	/**
+	 * Steps 1 to 5 of blueprint section 3.2. Returns null after recording a fallback.
+	 *
+	 * @param string    $html  Input.
+	 * @param string    $mode  Mode.
+	 * @param string    $scope Scope.
+	 * @param Fix[]     $fixes Active fixes.
+	 * @param int|float $start hrtime() at the start of the run.
+	 * @return string|null
+	 */
+	private function process( string $html, string $mode, string $scope, array $fixes, $start ) {
+		$max_bytes = (int) apply_filters( 'softglaze_a11y_max_bytes', $this->max_bytes );
+		$max_ms    = (float) apply_filters( 'softglaze_a11y_max_ms', $this->max_ms );
+
+		if ( strlen( $html ) > $max_bytes ) {
+			$this->recorder->fallback( 'size' );
+			return null;
+		}
+		// The HTML API assumes UTF-8; anything else is left alone.
+		if ( 1 !== preg_match( '//u', $html ) ) {
+			$this->recorder->fallback( 'encoding' );
+			return null;
+		}
+
+		$deadline    = $start + (int) round( $max_ms * 1000000 );
+		$this->index = new Document_Index( $scope, $mode );
+		$this->plan  = new Plan();
+
+		$openers = $this->analyse( $html, $fixes, $deadline );
+		if ( null === $openers ) {
+			return null;
+		}
+
+		$apply = $this->resolve( $mode );
+		if ( empty( $apply ) ) {
+			return $html;
+		}
+
+		return $this->apply( $html, $apply, $openers, $deadline );
+	}
+
+	/**
+	 * The opener predicate shared by both passes. Changing it in one pass only
+	 * would let ordinals drift, so both call this method.
+	 *
+	 * @param WP_HTML_Tag_Processor $processor Processor on a token.
+	 * @param string|null           $type      get_token_type() of that token.
+	 * @return bool
+	 */
+	private static function is_opener( WP_HTML_Tag_Processor $processor, $type ): bool {
+		return '#tag' === $type && ! $processor->is_tag_closer();
+	}
+
+	/**
+	 * Fixes analysed in this mode and scope, in priority order.
+	 *
+	 * @param string $mode  Mode.
+	 * @param string $scope Scope.
+	 * @return Fix[]
+	 */
+	private function active_fixes( string $mode, string $scope ): array {
+		$states = self::MODE_STATES[ $mode ]['analyse'];
+		$order  = array();
+		$active = array();
+		$i      = 0;
+		foreach ( $this->fixes as $id => $fix ) {
+			if ( ! in_array( $this->states[ $id ], $states, true ) || ! in_array( $scope, $fix->scopes(), true ) ) {
+				continue;
+			}
+			$active[ $id ] = $fix;
+			$order[ $id ]  = array( $fix instanceof Fix_Base ? $fix->priority() : 10, $i++ );
+		}
+		uksort(
+			$active,
+			static function ( $a, $b ) use ( $order ) {
+				return $order[ $a ] <=> $order[ $b ];
+			}
+		);
+		return array_values( $active );
+	}
+
+	/**
+	 * The analyse pass. Returns the opener count, or null after recording a fallback.
+	 *
+	 * @param string    $html     Input.
+	 * @param Fix[]     $fixes    Active fixes.
+	 * @param int|float $deadline hrtime() value after which the run gives up.
+	 * @return int|null
+	 */
+	private function analyse( string $html, array $fixes, $deadline ) {
+		$this->stack      = array();
+		$this->open_tags  = array();
+		$this->collecting = 0;
+		$this->listeners  = array();
+		$this->listen_all = array();
+
+		foreach ( $fixes as $fix ) {
+			$tags = array();
+			if ( $fix instanceof Fix_Base ) {
+				$fix->reset();
+				$tags = $fix->tags();
+			}
+			if ( empty( $tags ) ) {
+				$this->listen_all[] = $fix;
+				continue;
+			}
+			foreach ( $tags as $tag ) {
+				$this->listeners[ strtoupper( $tag ) ][] = $fix;
+			}
+		}
+
+		$processor = $this->create_processor( $html, 'analyse' );
+		$ordinal   = -1;
+		$tokens    = 0;
+
+		while ( $processor->next_token() ) {
+			++$tokens;
+			if ( 0 === $tokens % self::CLOCK_EVERY && hrtime( true ) > $deadline ) {
+				$this->recorder->fallback( 'time' );
+				return null;
+			}
+
+			$type = $processor->get_token_type();
+			if ( '#text' === $type ) {
+				if ( $this->collecting > 0 ) {
+					$this->add_text( $processor->get_modifiable_text() );
+				}
+				continue;
+			}
+			if ( '#tag' !== $type ) {
+				continue;
+			}
+
+			$name = (string) $processor->get_token_name();
+			if ( ! self::is_opener( $processor, $type ) ) {
+				$this->close_tag( $name );
+				continue;
+			}
+
+			++$ordinal;
+			$this->open_tag( $processor, $ordinal, $name );
+		}
+
+		$this->recorder->set_engine(
+			array(
+				'tokens'  => $tokens,
+				'openers' => $ordinal + 1,
+			)
+		);
+
+		if ( $processor->paused_at_incomplete_token() ) {
+			$this->recorder->fallback( 'incomplete' );
+			return null;
+		}
+
+		// Elements still open at the end of the input close here.
+		while ( ! empty( $this->stack ) ) {
+			$this->pop_to( count( $this->stack ) - 1 );
+		}
+
+		foreach ( $fixes as $fix ) {
+			if ( $fix instanceof Fix_Base ) {
+				$fix->finish( $this->index, $this->plan, $this->recorder );
+			}
+		}
+
+		if ( hrtime( true ) > $deadline ) {
+			$this->recorder->fallback( 'time' );
+			return null;
+		}
+
+		return $ordinal + 1;
+	}
+
+	/**
+	 * Handles a tag opener: index, implicit closes, text sources, stack, dispatch.
+	 *
+	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
+	 * @param int                   $ordinal   Opener ordinal.
+	 * @param string                $name      Upper-case tag name.
+	 * @return void
+	 */
+	private function open_tag( WP_HTML_Tag_Processor $processor, int $ordinal, string $name ): void {
+		$id = $processor->get_attribute( 'id' );
+		$this->index->add_opener( $name, is_string( $id ) ? trim( $id ) : '' );
+		if ( 'LABEL' === $name ) {
+			$for = $processor->get_attribute( 'for' );
+			if ( is_string( $for ) ) {
+				$this->index->add_label_for( trim( $for ) );
+			}
+		}
+
+		// The parser closes an open link or button when another one starts, and a heading when a heading starts.
+		if ( ( 'A' === $name || 'BUTTON' === $name ) && ! empty( $this->open_tags[ $name ] ) ) {
+			$this->close_tag( $name );
+		} elseif ( isset( self::HEADINGS[ $name ] ) && ! empty( $this->stack ) && isset( self::HEADINGS[ end( $this->stack )->tag ] ) ) {
+			$this->pop_to( count( $this->stack ) - 1 );
+		}
+
+		$in_svg = ! empty( $this->open_tags['SVG'] );
+		if ( $this->collecting > 0 ) {
+			if ( 'IMG' === $name ) {
+				$alt = $processor->get_attribute( 'alt' );
+				if ( is_string( $alt ) ) {
+					$this->add_text( ' ' . $alt . ' ' );
+				}
+			} elseif ( 'TITLE' === $name && $in_svg ) {
+				$this->add_text( ' ' . $processor->get_modifiable_text() . ' ' );
+			}
+		}
+		if ( 'TITLE' === $name && $in_svg ) {
+			$this->innermost( 'SVG' )->has_svg_title = true;
+		}
+
+		$aria_hidden = $processor->get_attribute( 'aria-hidden' );
+		$hidden      = is_string( $aria_hidden ) && 'true' === strtolower( trim( $aria_hidden ) );
+		$tracked     = isset( self::TRACKED[ $name ] );
+		$can_open    = ! isset( self::VOID[ $name ] ) && ! isset( self::RAW[ $name ] )
+			&& ! ( ( 'SVG' === $name || $in_svg ) && $processor->has_self_closing_flag() )
+			&& ! ( 'FORM' === $name && ! empty( $this->open_tags['FORM'] ) );
+
+		$element   = null;
+		$listeners = isset( $this->listeners[ $name ] ) || ! empty( $this->listen_all ) ? $this->listeners_for( $name ) : array();
+		$ancestors = $this->stack;
+
+		if ( $can_open && ( $tracked || $hidden ) ) {
+			$element                  = new Element( $name, $ordinal, $tracked && self::TRACKED[ $name ], $hidden );
+			$this->stack[]            = $element;
+			$this->open_tags[ $name ] = isset( $this->open_tags[ $name ] ) ? $this->open_tags[ $name ] + 1 : 1;
+			if ( $element->collects_text ) {
+				++$this->collecting;
+			}
+		} elseif ( $can_open && ! empty( $this->open_tags[ $name ] ) ) {
+			// An untracked element with the same name as an open frame: its end tag must not close the frame.
+			++$this->innermost( $name )->nested;
+		}
+
+		if ( empty( $listeners ) ) {
+			return;
+		}
+		$this->token->set_opener( $processor, $ordinal, $name, $element, $ancestors );
+		foreach ( $listeners as $fix ) {
+			$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
+		}
+	}
+
+	/**
+	 * Handles an end tag for a tracked element.
+	 *
+	 * @param string $name Upper-case tag name.
+	 * @return void
+	 */
+	private function close_tag( string $name ): void {
+		$is_heading = isset( self::HEADINGS[ $name ] );
+		if ( ! $is_heading && empty( $this->open_tags[ $name ] ) ) {
+			return;
+		}
+		for ( $i = count( $this->stack ) - 1; $i >= 0; $i-- ) {
+			$frame = $this->stack[ $i ];
+			if ( $frame->tag === $name || ( $is_heading && isset( self::HEADINGS[ $frame->tag ] ) ) ) {
+				if ( $frame->nested > 0 ) {
+					--$frame->nested;
+					return;
+				}
+				$this->pop_to( $i );
+				return;
+			}
+		}
+	}
+
+	/**
+	 * Closes the frame at a stack position and every frame inside it, innermost first.
+	 *
+	 * @param int $position Stack position.
+	 * @return void
+	 */
+	private function pop_to( int $position ): void {
+		for ( $i = count( $this->stack ) - 1; $i >= $position; $i-- ) {
+			$frame = array_pop( $this->stack );
+			--$this->open_tags[ $frame->tag ];
+			if ( $frame->collects_text ) {
+				--$this->collecting;
+			}
+			$listeners = $this->listeners_for( $frame->tag );
+			if ( empty( $listeners ) ) {
+				continue;
+			}
+			$this->token->set_closer( $frame, $this->stack );
+			foreach ( $listeners as $fix ) {
+				$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
+			}
+		}
+	}
+
+	/**
+	 * Appends text to every open frame that collects text.
+	 *
+	 * @param string $text Decoded text.
+	 * @return void
+	 */
+	private function add_text( string $text ): void {
+		foreach ( $this->stack as $frame ) {
+			if ( $frame->collects_text ) {
+				$frame->add_text( $text );
+			}
+		}
+	}
+
+	/**
+	 * The innermost open frame with a tag (callers check that one is open).
+	 *
+	 * @param string $tag Upper-case tag name.
+	 * @return Element
+	 */
+	private function innermost( string $tag ): Element {
+		for ( $i = count( $this->stack ) - 1; $i > 0; $i-- ) {
+			if ( $tag === $this->stack[ $i ]->tag ) {
+				return $this->stack[ $i ];
+			}
+		}
+		return $this->stack[0];
+	}
+
+	/**
+	 * Fixes that see a tag.
+	 *
+	 * @param string $name Upper-case tag name.
+	 * @return Fix[]
+	 */
+	private function listeners_for( string $name ): array {
+		if ( isset( $this->listeners[ $name ] ) ) {
+			return empty( $this->listen_all ) ? $this->listeners[ $name ] : array_merge( $this->listeners[ $name ], $this->listen_all );
+		}
+		return $this->listen_all;
+	}
+
+	/**
+	 * Step 3: picks one proposal per attribute, records it, and returns the
+	 * edits this mode applies, keyed by ordinal.
+	 *
+	 * @param string $mode Mode.
+	 * @return array
+	 */
+	private function resolve( string $mode ): array {
+		$apply_states = self::MODE_STATES[ $mode ]['apply'];
+		$applies      = function ( $fix_id ) use ( $apply_states ) {
+			return in_array( $this->state_of( $fix_id ), $apply_states, true );
+		};
+		$any          = static function () {
+			return true;
+		};
+
+		$apply   = array();
+		$applied = 0;
+		foreach ( $this->plan->grouped() as $ordinal => $attributes ) {
+			foreach ( $attributes as $attribute => $proposals ) {
+				$winner     = Plan::winner( $proposals, $applies );
+				$is_applied = null !== $winner;
+				if ( ! $is_applied ) {
+					$winner = Plan::winner( $proposals, $any );
+				}
+				$this->recorder->add_change( $winner['fix'], $this->state_of( $winner['fix'] ), $winner['signature'], $attribute, $winner['before'], $winner['value'], $is_applied );
+				if ( $is_applied ) {
+					$apply[ $ordinal ]['tag']                      = $winner['tag'];
+					$apply[ $ordinal ]['attributes'][ $attribute ] = $winner['value'];
+					++$applied;
+				}
+			}
+		}
+
+		$this->recorder->set_engine(
+			array(
+				'edits_planned' => $this->plan->count(),
+				'edits_applied' => $applied,
+			)
+		);
+		return $apply;
+	}
+
+	/**
+	 * Steps 4 and 5: the apply pass and the sanity check. Returns null after recording a fallback.
+	 *
+	 * @param string    $html     Input.
+	 * @param array     $apply    Edits keyed by ordinal.
+	 * @param int       $openers  Opener count of the analyse pass.
+	 * @param int|float $deadline hrtime() value after which the run gives up.
+	 * @return string|null
+	 */
+	private function apply( string $html, array $apply, int $openers, $deadline ) {
+		$expected = 0;
+		foreach ( $apply as $edit ) {
+			$expected += count( $edit['attributes'] );
+		}
+
+		$processor = $this->create_processor( $html, 'apply' );
+		$ordinal   = -1;
+		$tokens    = 0;
+		$applied   = 0;
+		$pending   = 0;
+
+		while ( $processor->next_token() ) {
+			++$tokens;
+			if ( 0 === $tokens % self::CLOCK_EVERY && hrtime( true ) > $deadline ) {
+				$this->recorder->fallback( 'time' );
+				return null;
+			}
+			if ( ! self::is_opener( $processor, $processor->get_token_type() ) ) {
+				continue;
+			}
+			++$ordinal;
+			if ( ! isset( $apply[ $ordinal ] ) ) {
+				continue;
+			}
+			if ( $processor->get_token_name() !== $apply[ $ordinal ]['tag'] ) {
+				$this->recorder->fallback( 'ordinal' );
+				return null;
+			}
+			foreach ( $apply[ $ordinal ]['attributes'] as $attribute => $value ) {
+				if ( ! $processor->set_attribute( $attribute, $value ) ) {
+					$this->recorder->fallback( 'apply' );
+					return null;
+				}
+				++$applied;
+				++$pending;
+			}
+
+			// The processor walks its queue of pending updates on every token; flush it every few edits and after the last.
+			if ( $pending >= self::FLUSH_EVERY || $applied === $expected ) {
+				$processor->get_updated_html();
+				$pending = 0;
+			}
+		}
+
+		$this->recorder->set_engine( array( 'openers_apply' => $ordinal + 1 ) );
+
+		if ( $processor->paused_at_incomplete_token() ) {
+			$this->recorder->fallback( 'incomplete' );
+			return null;
+		}
+		if ( $ordinal + 1 !== $openers ) {
+			$this->recorder->fallback( 'ordinal' );
+			return null;
+		}
+		if ( $applied !== $expected ) {
+			$this->recorder->fallback( 'apply' );
+			return null;
+		}
+
+		$output = $processor->get_updated_html();
+		if (
+			'' === $output
+			|| substr_count( $output, '<' ) !== substr_count( $html, '<' )
+			|| substr_count( $output, '>' ) !== substr_count( $html, '>' )
+		) {
+			$this->recorder->fallback( 'sanity' );
+			return null;
+		}
+		return $output;
+	}
+
+	/**
+	 * Releases per-run references.
+	 *
+	 * @return void
+	 */
+	private function end_run(): void {
+		$this->token->clear();
+		$this->stack      = array();
+		$this->open_tags  = array();
+		$this->collecting = 0;
+		$this->index      = null;
+		$this->plan       = null;
+	}
+}

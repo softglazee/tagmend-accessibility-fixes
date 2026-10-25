@@ -47,6 +47,10 @@ final class Plugin {
 		if ( is_admin() ) {
 			add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		}
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			\WP_CLI::add_command( 'softglaze-a11y', Cli\Command::class );
+		}
+		// TODO(Phase 1B): request gate, settings, registry and the layer A, B and C wiring.
 	}
 
 	/**

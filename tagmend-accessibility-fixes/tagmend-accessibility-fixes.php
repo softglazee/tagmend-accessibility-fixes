@@ -24,7 +24,8 @@ define( 'SOFTGLAZE_A11Y_DIR', plugin_dir_path( __FILE__ ) );
 
 /*
  * Maps SoftGlaze\AccessibilityRepair\Sub_Space\Class_Name to
- * includes/sub-space/class-class-name.php.
+ * includes/sub-space/class-class-name.php (interface-class-name.php for the
+ * Fix interface).
  */
 spl_autoload_register(
 	static function ( $class_name ) {
@@ -34,15 +35,18 @@ spl_autoload_register(
 		}
 
 		$parts = explode( '\\', substr( $class_name, strlen( $prefix ) ) );
-		$class = array_pop( $parts );
+		$class = strtolower( str_replace( '_', '-', array_pop( $parts ) ) );
 		$path  = SOFTGLAZE_A11Y_DIR . 'includes/';
 		foreach ( $parts as $part ) {
 			$path .= strtolower( str_replace( '_', '-', $part ) ) . '/';
 		}
 
-		$file = $path . 'class-' . strtolower( str_replace( '_', '-', $class ) ) . '.php';
-		if ( is_readable( $file ) ) {
-			require_once $file;
+		foreach ( array( 'class-', 'interface-' ) as $file_prefix ) {
+			$file = $path . $file_prefix . $class . '.php';
+			if ( is_readable( $file ) ) {
+				require_once $file;
+				return;
+			}
 		}
 	}
 );
