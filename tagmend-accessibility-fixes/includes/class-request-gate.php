@@ -47,6 +47,15 @@ class Request_Gate {
 	const VIEW_NONCE_ARG = 'softglaze_a11y_view_nonce';
 	const VIEW_ACTION    = 'softglaze_a11y_view';
 
+	const SCAN_ARG       = 'softglaze_a11y_scan';
+	const SCAN_NONCE_ARG = 'softglaze_a11y_scan_nonce';
+	const SCAN_ACTION    = 'softglaze_a11y_scan';
+
+	/**
+	 * Query args kept in a normalised URL (blueprint section 11).
+	 */
+	const URL_ARGS = array( 'p', 'page_id', 'paged', 'product' );
+
 	/**
 	 * Allowed values of the view arg and the mode each one selects.
 	 */
@@ -120,7 +129,8 @@ class Request_Gate {
 	}
 
 	/**
-	 * Mode of this request: visitor, or one of the two admin views when an
+	 * Mode of this request: visitor; scan when an administrator follows a scan
+	 * link with a valid nonce; or one of the two admin views when an
 	 * administrator follows a view link with a valid nonce.
 	 *
 	 * @return string One of the Engine::MODE_* constants.
@@ -197,41 +207,69 @@ class Request_Gate {
 	}
 
 	/**
-	 * SHA-256 of the normalised URL of this request: scheme and host of the
-	 * home URL, the request path, and only the p, page_id, paged and product
-	 * query args (blueprint section 11).
+	 * SHA-256 of the normalised URL of this request.
 	 *
 	 * @return string
 	 */
 	public function url_hash(): string {
+		return hash( 'sha256', $this->normalised_url() );
+	}
+
+	/**
+	 * The normalised URL of this request: scheme and host of the home URL,
+	 * the request path, and only the p, page_id, paged and product query args
+	 * (blueprint section 11).
+	 *
+	 * @return string
+	 */
+	public function normalised_url(): string {
+		$path = wp_parse_url( $this->request_uri(), PHP_URL_PATH );
+		$args = array();
+		foreach ( self::URL_ARGS as $key ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only: these args only identify the page; nothing is changed.
+			if ( isset( $_GET[ $key ] ) && is_string( $_GET[ $key ] ) ) {
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- As above; normalise_url() reduces the value to a number or a slug.
+				$args[ $key ] = sanitize_text_field( wp_unslash( $_GET[ $key ] ) );
+			}
+		}
+		return self::normalise_url( is_string( $path ) ? $path : '/', $args );
+	}
+
+	/**
+	 * Builds a normalised URL from a path and query args: scheme, host and
+	 * port of the home URL, the path, and the p, page_id, paged (positive
+	 * numbers) and product (a slug) args in a fixed order. Shared by the front
+	 * end, the REST routes and WP-CLI, so one page always gets one hash.
+	 *
+	 * @param string $path Path, starting with "/".
+	 * @param array  $args Raw query values by name; other names are ignored.
+	 * @return string
+	 */
+	public static function normalise_url( string $path, array $args ): string {
 		$home   = wp_parse_url( home_url( '/' ) );
-		$scheme = isset( $home['scheme'] ) ? $home['scheme'] : 'http';
+		$scheme = isset( $home['scheme'] ) ? strtolower( $home['scheme'] ) : 'http';
 		$host   = isset( $home['host'] ) ? strtolower( $home['host'] ) : '';
 		$port   = isset( $home['port'] ) ? ':' . (int) $home['port'] : '';
-		$path   = wp_parse_url( $this->request_uri(), PHP_URL_PATH );
-		$path   = is_string( $path ) ? $path : '/';
+		$path   = '' === $path || '/' !== $path[0] ? '/' . $path : $path;
 
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only: these args only identify the page in a hash; nothing is changed.
-		$args = array();
+		$query = array();
 		foreach ( array( 'p', 'page_id', 'paged' ) as $key ) {
-			if ( isset( $_GET[ $key ] ) ) {
-				$number = absint( sanitize_text_field( wp_unslash( $_GET[ $key ] ) ) );
+			if ( isset( $args[ $key ] ) && is_scalar( $args[ $key ] ) ) {
+				$number = absint( $args[ $key ] );
 				if ( $number > 0 ) {
-					$args[ $key ] = $number;
+					$query[ $key ] = $number;
 				}
 			}
 		}
-		if ( isset( $_GET['product'] ) ) {
-			$product = sanitize_title( sanitize_text_field( wp_unslash( $_GET['product'] ) ) );
+		if ( isset( $args['product'] ) && is_scalar( $args['product'] ) ) {
+			$product = sanitize_title( (string) $args['product'] );
 			if ( '' !== $product ) {
-				$args['product'] = $product;
+				$query['product'] = $product;
 			}
 		}
-		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
-		ksort( $args );
-		$url = $scheme . '://' . $host . $port . $path . ( empty( $args ) ? '' : '?' . http_build_query( $args ) );
-		return hash( 'sha256', $url );
+		ksort( $query );
+		return $scheme . '://' . $host . $port . $path . ( empty( $query ) ? '' : '?' . http_build_query( $query ) );
 	}
 
 	/**
@@ -376,12 +414,16 @@ class Request_Gate {
 	}
 
 	/**
-	 * The admin view requested with a valid nonce by a user who can manage
-	 * options, otherwise visitor. Capability first, then the nonce.
+	 * The mode an administrator asked for with a valid nonce, otherwise
+	 * visitor: a scan first, then the two admin views.
 	 *
 	 * @return string
 	 */
 	private function view_mode(): string {
+		if ( $this->scan_requested() ) {
+			return Engine::MODE_SCAN;
+		}
+
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- The nonce is verified below, after the capability check.
 		if ( ! isset( $_GET[ self::VIEW_ARG ] ) ) {
 			return Engine::MODE_VISITOR;
@@ -399,5 +441,26 @@ class Request_Gate {
 			return Engine::MODE_VISITOR;
 		}
 		return self::VIEWS[ $view ];
+	}
+
+	/**
+	 * Whether this request is a scan (blueprint section 10.3): the scan arg
+	 * is "1", the user can manage options (checked first), and the scan nonce
+	 * is valid for this user's session. Anything else is an ordinary request.
+	 *
+	 * @return bool
+	 */
+	private function scan_requested(): bool {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- The nonce is verified below, after the capability check.
+		if ( ! isset( $_GET[ self::SCAN_ARG ] ) ) {
+			return false;
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Compared with "1" below; the nonce is verified below.
+		$scan = sanitize_key( wp_unslash( $_GET[ self::SCAN_ARG ] ) );
+		if ( '1' !== $scan || ! current_user_can( 'manage_options' ) ) {
+			return false;
+		}
+		$nonce = isset( $_GET[ self::SCAN_NONCE_ARG ] ) ? sanitize_text_field( wp_unslash( $_GET[ self::SCAN_NONCE_ARG ] ) ) : '';
+		return '' !== $nonce && false !== wp_verify_nonce( $nonce, self::SCAN_ACTION );
 	}
 }

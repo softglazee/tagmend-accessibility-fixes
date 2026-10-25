@@ -12,10 +12,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * In-memory record of a run. Nothing here is stored: the scan and admin-view
- * code decides what to persist (TODO(Phase 6A): Pages_Store). In visitor mode
- * the engine creates it without details, so only the engine facts and a
- * fallback reason are kept.
+ * In-memory record of a run. Nothing here is stored: in scans and admin
+ * views the Scanner merges the runs of a request and Pages_Store keeps them.
+ * In visitor mode the engine creates it without details, so only the engine
+ * facts and a fallback reason are kept.
  */
 final class Recorder {
 

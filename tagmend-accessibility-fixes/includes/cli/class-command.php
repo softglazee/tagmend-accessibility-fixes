@@ -10,6 +10,7 @@ namespace SoftGlaze\AccessibilityRepair\Cli;
 use SoftGlaze\AccessibilityRepair\Engine;
 use SoftGlaze\AccessibilityRepair\Plugin;
 use SoftGlaze\AccessibilityRepair\Registry;
+use SoftGlaze\AccessibilityRepair\Report\Scanner;
 use WP_CLI;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -17,7 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Fix states, and analysis of saved HTML with the repair engine.
+ * Fix states, analysis of saved HTML with the repair engine, and stored
+ * reports. No command makes an HTTP request.
  */
 final class Command {
 
@@ -27,12 +29,18 @@ final class Command {
 	const MAX_FILE_BYTES = 10485760;
 
 	/**
-	 * Analyses a saved HTML file in scan mode and lists what each fix would change. Makes no request and writes nothing.
+	 * Analyses a saved HTML file in scan mode and lists what each fix would change. Makes no request; writes only with --save.
 	 *
 	 * ## OPTIONS
 	 *
 	 * --file=<path>
 	 * : Path of a local HTML file.
+	 *
+	 * [--url=<url>]
+	 * : Address of the page the file was saved from, on this site. Needed with --save. This is WP-CLI's global --url, which also selects the site on a multisite network.
+	 *
+	 * [--save]
+	 * : Store the result as the report of --url (source "cli").
 	 *
 	 * [--scope=<scope>]
 	 * : Whether the file is a whole page or a content fragment.
@@ -56,6 +64,7 @@ final class Command {
 	 *
 	 *     wp softglaze-a11y analyse --file=/tmp/home.html
 	 *     wp softglaze-a11y analyse --file=/tmp/home.html --format=json
+	 *     wp softglaze-a11y analyse --file=/tmp/home.html --url=https://example.com/ --save
 	 *
 	 * @param array $args       Positional arguments (none).
 	 * @param array $assoc_args Named arguments.
@@ -63,9 +72,25 @@ final class Command {
 	 */
 	public function analyse( $args, $assoc_args ) {
 		unset( $args );
-		$path   = isset( $assoc_args['file'] ) ? (string) $assoc_args['file'] : '';
-		$scope  = isset( $assoc_args['scope'] ) && Engine::SCOPE_CONTENT === $assoc_args['scope'] ? Engine::SCOPE_CONTENT : Engine::SCOPE_PAGE;
-		$format = isset( $assoc_args['format'] ) && 'json' === $assoc_args['format'] ? 'json' : 'table';
+		$path    = isset( $assoc_args['file'] ) ? (string) $assoc_args['file'] : '';
+		$scope   = isset( $assoc_args['scope'] ) && Engine::SCOPE_CONTENT === $assoc_args['scope'] ? Engine::SCOPE_CONTENT : Engine::SCOPE_PAGE;
+		$format  = isset( $assoc_args['format'] ) && 'json' === $assoc_args['format'] ? 'json' : 'table';
+		$save    = ! empty( $assoc_args['save'] );
+		$plugin  = Plugin::instance();
+		$scanner = $plugin->scanner();
+		$url     = '';
+
+		// WP-CLI takes --url as a global parameter, so the value is read from its configuration.
+		$given = isset( $assoc_args['url'] ) ? (string) $assoc_args['url'] : (string) WP_CLI::get_config( 'url' );
+		if ( '' !== $given ) {
+			$url = $scanner->validate_target( $given );
+			if ( '' === $url ) {
+				WP_CLI::error( 'Not an address on this site: ' . $given );
+			}
+		}
+		if ( $save && '' === $url ) {
+			WP_CLI::error( '--save needs --url, the address of the page the file was saved from.' );
+		}
 
 		if ( '' === $path || false !== strpos( $path, '://' ) || wp_is_stream( $path ) || ! is_file( $path ) || ! is_readable( $path ) ) {
 			WP_CLI::error( 'Not a readable local file: ' . $path );
@@ -81,11 +106,15 @@ final class Command {
 			WP_CLI::error( 'The file could not be read: ' . $path );
 		}
 
-		$plugin = Plugin::instance();
 		$engine = new Engine( $plugin->registry()->fixes(), $plugin->settings()->fix_states(), array( 'checks' => $plugin->registry()->checks() ) );
 		$engine->run( $html, Engine::MODE_SCAN, $scope );
-		// TODO(Phase 6A): --url and --save record the result as a report with source "cli".
 		$result = $engine->recorder()->to_array();
+
+		if ( $save ) {
+			if ( ! $scanner->store_cli_report( $url, Scanner::result_of_run( $engine->recorder(), $scope ) ) ) {
+				WP_CLI::error( 'The report could not be stored.' );
+			}
+		}
 
 		if ( 'json' === $format ) {
 			WP_CLI::line( (string) wp_json_encode( $result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
@@ -104,7 +133,139 @@ final class Command {
 				null === $facts['fallback'] ? 'none' : $facts['fallback']
 			)
 		);
+		self::print_lists( $result );
+		if ( $save ) {
+			WP_CLI::success( 'Report stored for ' . $scanner->normalise_target( $url ) . ' (source cli).' );
+		}
+	}
 
+	/**
+	 * Shows the stored report of one page: when and how it was made, the changes and the findings.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <url>
+	 * : Address of a page on this site.
+	 *
+	 * [--format=<format>]
+	 * : Output format.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp softglaze-a11y report https://example.com/cart/
+	 *     wp softglaze-a11y report https://example.com/ --format=json
+	 *
+	 * @param array $args       Positional arguments: the URL.
+	 * @param array $assoc_args Named arguments.
+	 * @return void
+	 */
+	public function report( $args, $assoc_args ) {
+		$scanner = Plugin::instance()->scanner();
+		$given   = isset( $args[0] ) ? (string) $args[0] : '';
+		$url     = $scanner->validate_target( $given );
+		if ( '' === $url ) {
+			WP_CLI::error( 'Not an address on this site: ' . $given );
+		}
+		$row = $scanner->report_for( $url );
+		if ( null === $row ) {
+			WP_CLI::error( 'No report for ' . $scanner->normalise_target( $url ) . '. Use "Scan this page" in the admin bar, or wp softglaze-a11y analyse --save.' );
+		}
+
+		$summary = Scanner::summary( $row );
+		if ( isset( $assoc_args['format'] ) && 'json' === $assoc_args['format'] ) {
+			WP_CLI::line(
+				(string) wp_json_encode(
+					array(
+						'summary' => $summary,
+						'result'  => $row['result'],
+					),
+					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+				)
+			);
+			return;
+		}
+
+		WP_CLI::line( 'URL: ' . $summary['url'] );
+		WP_CLI::line( sprintf( 'Stored: %1$s UTC, source %2$s', $summary['scanned_gmt'], $summary['source'] ) );
+		WP_CLI::line(
+			sprintf(
+				'Scope: %1$s%2$s; fallback: %3$s',
+				$summary['scope'],
+				null === $summary['scope_reason'] ? '' : ' (' . $summary['scope_reason'] . ')',
+				null === $summary['fallback'] ? 'none' : $summary['fallback']
+			)
+		);
+		WP_CLI::line( sprintf( 'Changes: %1$d Live, %2$d Preview, %3$d Off (would change); findings: %4$d', $summary['changes']['live'], $summary['changes']['preview'], $summary['changes']['off'], $summary['findings'] ) );
+		self::print_lists( $row['result'] );
+	}
+
+	/**
+	 * Lists the stored reports, newest first.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--limit=<number>]
+	 * : Most rows shown.
+	 * ---
+	 * default: 50
+	 * ---
+	 *
+	 * [--format=<format>]
+	 * : Output format.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 *   - csv
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp softglaze-a11y pages
+	 *     wp softglaze-a11y pages --limit=10 --format=json
+	 *
+	 * @param array $args       Positional arguments (none).
+	 * @param array $assoc_args Named arguments.
+	 * @return void
+	 */
+	public function pages( $args, $assoc_args ) {
+		unset( $args );
+		$pages  = Plugin::instance()->pages();
+		$limit  = isset( $assoc_args['limit'] ) ? max( 1, absint( $assoc_args['limit'] ) ) : 50;
+		$format = isset( $assoc_args['format'] ) && in_array( $assoc_args['format'], array( 'json', 'csv' ), true ) ? $assoc_args['format'] : 'table';
+
+		$rows = array();
+		foreach ( $pages->recent( $limit ) as $row ) {
+			$rows[] = array(
+				'url'      => $row['url'],
+				'scanned'  => $row['scanned_gmt'],
+				'source'   => $row['source'],
+				'live'     => (int) $row['changes_live'],
+				'preview'  => (int) $row['changes_preview'],
+				'off'      => (int) $row['changes_off'],
+				'findings' => (int) $row['findings'],
+			);
+		}
+		\WP_CLI\Utils\format_items( $format, $rows, array( 'url', 'scanned', 'source', 'live', 'preview', 'off', 'findings' ) );
+		if ( 'table' === $format ) {
+			WP_CLI::line( sprintf( 'Reports stored: %1$d (kept: %2$d)', $pages->count(), $pages->cap() ) );
+		}
+	}
+
+	/**
+	 * Prints the change and finding tables of a result.
+	 *
+	 * @param array $result Result with 'changes' and 'findings'.
+	 * @return void
+	 */
+	private static function print_lists( array $result ): void {
 		$rows = array();
 		foreach ( $result['changes'] as $change ) {
 			$rows[] = array(
@@ -116,7 +277,7 @@ final class Command {
 				'after'     => $change['after'],
 			);
 		}
-		WP_CLI::line( sprintf( 'Changes: %d', count( $rows ) ) );
+		WP_CLI::line( sprintf( 'Changes listed: %d', count( $rows ) ) );
 		if ( ! empty( $rows ) ) {
 			\WP_CLI\Utils\format_items( 'table', $rows, array( 'fix', 'state', 'element', 'attribute', 'before', 'after' ) );
 		}
@@ -131,7 +292,7 @@ final class Command {
 				'detail'     => $finding['detail'],
 			);
 		}
-		WP_CLI::line( sprintf( 'Findings: %d', count( $findings ) ) );
+		WP_CLI::line( sprintf( 'Findings listed: %d', count( $findings ) ) );
 		if ( ! empty( $findings ) ) {
 			\WP_CLI\Utils\format_items( 'table', $findings, array( 'check', 'sc', 'element', 'attachment', 'detail' ) );
 		}

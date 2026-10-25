@@ -92,7 +92,6 @@ final class Settings {
 		if ( null === get_option( self::OPTION, null ) ) {
 			add_option( self::OPTION, $this->defaults() );
 		}
-		// TODO(Phase 6A): create the two tables and add the plugin_activated log row. TODO(Phase 7): refuse network activation.
 	}
 
 	/**
@@ -195,7 +194,6 @@ final class Settings {
 				do_action( 'softglaze_a11y_fix_state_changed', $id, $from, $to, $user_id );
 			}
 		}
-		// TODO(Phase 6A): state changes become activity log rows (softglaze_a11y_fix_state_changed).
 
 		return $rejected;
 	}

@@ -35,6 +35,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Every callback checks the cached gate again, returns what it received on
  * any error, and never prints. Fallback reasons are kept in memory and
  * written on shutdown, after core has finished its output buffer callback.
+ *
+ * Scans (an administrator's own request with a valid scan nonce) register
+ * only the page pass or the content filters: every fix is analysed, none is
+ * applied, nothing is printed, and the response is the original HTML. Scans
+ * and "View repaired" hand each run to the Scanner, which stores the report
+ * on shutdown. Visitor requests never store anything except the throttled
+ * fallback row.
  */
 class Front_End {
 
@@ -101,9 +108,22 @@ class Front_End {
 	const LANGUAGE_PRIORITY = 20;
 
 	/**
-	 * Fallbacks are recorded after core's buffer callback (shutdown priority 1) has run.
+	 * Fallbacks and reports are recorded after core's buffer callback (shutdown priority 1) has run.
 	 */
 	const SHUTDOWN_PRIORITY = 100;
+
+	/**
+	 * The admin bar is switched off for a scan after any theme or plugin filter has spoken.
+	 */
+	const ADMIN_BAR_PRIORITY = 999;
+
+	/**
+	 * Modes whose runs are kept for a report, and the report source of each.
+	 */
+	const REPORT_SOURCES = array(
+		'scan'           => 'admin_scan',
+		'admin_repaired' => 'admin_view',
+	);
 
 	/**
 	 * Request gate.
@@ -125,6 +145,13 @@ class Front_End {
 	 * @var Settings
 	 */
 	protected $settings;
+
+	/**
+	 * Report collector and stores.
+	 *
+	 * @var Report\Scanner
+	 */
+	protected $scanner;
 
 	/**
 	 * Engine for this request, built on first use.
@@ -213,14 +240,16 @@ class Front_End {
 	/**
 	 * Creates the wiring.
 	 *
-	 * @param Request_Gate $gate     Request gate.
-	 * @param Registry     $registry Fix list.
-	 * @param Settings     $settings Settings.
+	 * @param Request_Gate        $gate     Request gate.
+	 * @param Registry            $registry Fix list.
+	 * @param Settings            $settings Settings.
+	 * @param Report\Scanner|null $scanner  Report collector; a default one when null.
 	 */
-	public function __construct( Request_Gate $gate, Registry $registry, Settings $settings ) {
+	public function __construct( Request_Gate $gate, Registry $registry, Settings $settings, ?Report\Scanner $scanner = null ) {
 		$this->gate     = $gate;
 		$this->registry = $registry;
 		$this->settings = $settings;
+		$this->scanner  = null !== $scanner ? $scanner : new Report\Scanner( $gate, new Report\Pages_Store(), new Report\Log_Store() );
 	}
 
 	/**
@@ -229,7 +258,26 @@ class Front_End {
 	 * @return void
 	 */
 	public function register(): void {
+		add_action( 'wp', array( $this, 'on_wp' ) );
 		add_action( 'template_redirect', array( $this, 'on_template_redirect' ), 1 );
+	}
+
+	/**
+	 * On the wp action, only when the scan arg is present: if the gate
+	 * accepts the request as a scan (capability, then nonce), switches the
+	 * admin bar off for this request (core sets it up on template_redirect
+	 * priority 0) and marks the response as not cacheable. Any other request
+	 * is left alone.
+	 *
+	 * @return void
+	 */
+	public function on_wp(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Presence check only; the gate checks the capability and the nonce.
+		if ( ! isset( $_GET[ Request_Gate::SCAN_ARG ] ) || Engine::MODE_SCAN !== $this->gate->mode() ) {
+			return;
+		}
+		add_filter( 'show_admin_bar', '__return_false', self::ADMIN_BAR_PRIORITY );
+		$this->send_no_cache();
 	}
 
 	/**
@@ -242,11 +290,17 @@ class Front_End {
 			return;
 		}
 
-		if ( $this->gate->is_admin_view() ) {
+		$mode = $this->gate->mode();
+		if ( $this->gate->is_admin_view() || Engine::MODE_SCAN === $mode ) {
 			$this->send_no_cache();
 		}
 
-		$applied = Engine::MODE_STATES[ $this->gate->mode() ]['apply'];
+		if ( Engine::MODE_SCAN === $mode ) {
+			$this->register_scan();
+			return;
+		}
+
+		$applied = Engine::MODE_STATES[ $mode ]['apply'];
 		if ( empty( $applied ) ) {
 			return;
 		}
@@ -284,11 +338,10 @@ class Front_End {
 		}
 
 		if ( $this->page_pass_available() && $this->needs_scope( Engine::SCOPE_PAGE, $applied ) ) {
-			add_filter( self::PAGE_FILTER, array( $this, 'filter_page' ), self::PAGE_PRIORITY, 2 );
-			add_action( self::BUFFER_CHECK_HOOK, array( $this, 'confirm_page_pass' ), self::BUFFER_CHECK_PRIORITY );
-			$this->layers['page'] = true;
+			$this->add_page_filter();
 		} elseif ( $this->needs_scope( Engine::SCOPE_CONTENT, $applied ) ) {
 			$this->add_content_filters();
+			$this->scanner->set_scope( Engine::SCOPE_CONTENT, $this->page_pass_available() ? Report\Scanner::REASON_NO_PAGE_FIX : $this->content_reason() );
 		}
 
 		// Our skip link is printed only when the page pass will settle it (target id, or hidden).
@@ -299,7 +352,30 @@ class Front_End {
 
 		if ( ! empty( $this->layers ) ) {
 			add_action( 'shutdown', array( $this, 'record_fallbacks' ), self::SHUTDOWN_PRIORITY );
+			if ( isset( self::REPORT_SOURCES[ $mode ] ) ) {
+				add_action( 'shutdown', array( $this, 'record_report' ), self::SHUTDOWN_PRIORITY );
+			}
 		}
+	}
+
+	/**
+	 * Scan mode: the page pass when it can run, otherwise the content
+	 * filters. No attribute hook, no printed element and no stylesheet, so
+	 * the response stays the original HTML; the engine analyses every fix and
+	 * applies none.
+	 *
+	 * @return void
+	 */
+	private function register_scan(): void {
+		$this->url_hash = $this->gate->url_hash();
+		if ( $this->page_pass_available() ) {
+			$this->add_page_filter();
+		} else {
+			$this->add_content_filters();
+			$this->scanner->set_scope( Engine::SCOPE_CONTENT, $this->content_reason() );
+		}
+		add_action( 'shutdown', array( $this, 'record_fallbacks' ), self::SHUTDOWN_PRIORITY );
+		add_action( 'shutdown', array( $this, 'record_report' ), self::SHUTDOWN_PRIORITY );
 	}
 
 	/**
@@ -327,9 +403,11 @@ class Front_End {
 			$this->skip_link_hooked = false;
 		}
 
-		// TODO(Phase 6A): scans on such a site see content fragments only; record the scope in the report.
+		// Scans and admin views record that they saw content fragments only (never remembered on a visitor request, D8).
 		// TODO(Phase 7): tell the administrator on the Overview when scans show that the page pass could not run.
-		if ( $this->needs_scope( Engine::SCOPE_CONTENT, Engine::MODE_STATES[ $this->gate->mode() ]['apply'] ) ) {
+		$this->scanner->set_scope( Engine::SCOPE_CONTENT, Report\Scanner::REASON_PAGE_BUFFER_OFF );
+		$mode = $this->gate->mode();
+		if ( Engine::MODE_SCAN === $mode || $this->needs_scope( Engine::SCOPE_CONTENT, Engine::MODE_STATES[ $mode ]['apply'] ) ) {
 			$this->add_content_filters();
 		}
 	}
@@ -366,7 +444,15 @@ class Front_End {
 		}
 		try {
 			$fix = $this->product_image_fix();
-			return $fix instanceof Fixes\Fix_Product_Img_Alt_Name ? $fix->filter_attributes( $attr, $attachment ) : $attr;
+			if ( ! $fix instanceof Fixes\Fix_Product_Img_Alt_Name ) {
+				return $attr;
+			}
+			$result = $fix->filter_attributes( $attr, $attachment );
+			$before = isset( $attr['alt'] ) && is_scalar( $attr['alt'] ) ? (string) $attr['alt'] : null;
+			if ( isset( $result['alt'] ) && is_string( $result['alt'] ) && $result['alt'] !== $before ) {
+				$this->record_attribute_change( 'product-img-alt-name', self::attribute_signature( 'img', $attr ), 'alt', $before, $result['alt'] );
+			}
+			return $result;
 		} catch ( Throwable $throwable ) {
 			return $attr;
 		}
@@ -460,7 +546,16 @@ class Front_End {
 		}
 		try {
 			$fix = $this->registry->get( 'nav-labels' );
-			return $fix instanceof Fixes\Fix_Nav_Labels ? $fix->filter_args( $args ) : $args;
+			if ( ! $fix instanceof Fixes\Fix_Nav_Labels ) {
+				return $args;
+			}
+			$result = $fix->filter_args( $args );
+			$before = isset( $args['container_aria_label'] ) && is_string( $args['container_aria_label'] ) ? $args['container_aria_label'] : '';
+			if ( isset( $result['container_aria_label'] ) && is_string( $result['container_aria_label'] ) && $result['container_aria_label'] !== $before ) {
+				$class = isset( $args['container_class'] ) && is_string( $args['container_class'] ) ? $args['container_class'] : '';
+				$this->record_attribute_change( 'nav-labels', self::attribute_signature( 'nav', array( 'class' => $class ) ), 'aria-label', '' === $before ? null : $before, $result['container_aria_label'] );
+			}
+			return $result;
 		} catch ( Throwable $throwable ) {
 			return $args;
 		}
@@ -539,8 +634,42 @@ class Front_End {
 			 * @param string $url_hash SHA-256 of the normalised URL.
 			 */
 			do_action( 'softglaze_a11y_engine_fallback', $reason, $this->url_hash );
-			// TODO(Phase 6A): one engine_fallback row in the activity log.
+
+			$this->scanner->log()->add(
+				'engine_fallback',
+				array(
+					'url_hash' => $this->url_hash,
+					'detail'   => $reason,
+				)
+			);
 		}
+	}
+
+	/**
+	 * Shutdown, in a scan or "View repaired": stores what the engine found on
+	 * this request (the Scanner checks the capability again).
+	 *
+	 * @return void
+	 */
+	public function record_report(): void {
+		$mode = $this->gate->mode();
+		if ( ! isset( self::REPORT_SOURCES[ $mode ] ) ) {
+			return;
+		}
+		try {
+			$this->scanner->store_request_report( self::REPORT_SOURCES[ $mode ] );
+		} catch ( Throwable $throwable ) {
+			return;
+		}
+	}
+
+	/**
+	 * The report collector.
+	 *
+	 * @return Report\Scanner
+	 */
+	public function scanner(): Report\Scanner {
+		return $this->scanner;
 	}
 
 	/**
@@ -622,7 +751,8 @@ class Front_End {
 		$this->skip_link_hooked = false;
 		$this->skip_link_done   = false;
 		$this->page_pass_vetoed = false;
-		$fix                    = $this->registry->get( 'new-tab-note' );
+		$this->scanner->reset();
+		$fix = $this->registry->get( 'new-tab-note' );
 		if ( $fix instanceof Fixes\Fix_New_Tab_Note ) {
 			$fix->set_note_available( true );
 		}
@@ -688,6 +818,27 @@ class Front_End {
 	}
 
 	/**
+	 * Registers the Layer C callback and the check that core started its buffer.
+	 *
+	 * @return void
+	 */
+	private function add_page_filter(): void {
+		add_filter( self::PAGE_FILTER, array( $this, 'filter_page' ), self::PAGE_PRIORITY, 2 );
+		add_action( self::BUFFER_CHECK_HOOK, array( $this, 'confirm_page_pass' ), self::BUFFER_CHECK_PRIORITY );
+		$this->layers['page'] = true;
+		$this->scanner->set_scope( Engine::SCOPE_PAGE );
+	}
+
+	/**
+	 * Why the page pass cannot run on this request: WordPress below 6.9, or switched off in Settings.
+	 *
+	 * @return string
+	 */
+	private function content_reason(): string {
+		return Registry::page_pass_exists() ? Report\Scanner::REASON_PAGE_PASS_OFF : Report\Scanner::REASON_NEEDS_WP69;
+	}
+
+	/**
 	 * Registers the Layer B content filters.
 	 *
 	 * @return void
@@ -723,7 +874,9 @@ class Front_End {
 			if ( ! empty( $counts['new-tab-note'][ $state ] ) ) {
 				$this->new_tab_used = true;
 			}
-			// TODO(Phase 6A): in admin_repaired views, store the recorder's changes and findings for this URL.
+			if ( isset( self::REPORT_SOURCES[ $this->gate->mode() ] ) ) {
+				$this->scanner->add_run( $recorder, $html, $output, $scope );
+			}
 			return $output;
 		} catch ( Throwable $throwable ) {
 			$this->fallbacks['exception'] = true;
@@ -743,7 +896,14 @@ class Front_End {
 		}
 		try {
 			$fix = $this->registry->get( 'read-more-context' );
-			return $fix instanceof Fixes\Fix_Read_More_Context ? $fix->label_more_links( $html, (string) get_the_title() ) : $html;
+			if ( ! $fix instanceof Fixes\Fix_Read_More_Context ) {
+				return $html;
+			}
+			$result = $fix->label_more_links( $html, (string) get_the_title() );
+			if ( $result !== $html ) {
+				$this->record_more_link_changes( $html, $result );
+			}
+			return $result;
 		} catch ( Throwable $throwable ) {
 			return $html;
 		}
@@ -762,7 +922,8 @@ class Front_End {
 			return $output;
 		}
 
-		$value = $this->html_lang_value( $processor->get_attribute( 'lang' ) );
+		$before = $processor->get_attribute( 'lang' );
+		$value  = $this->html_lang_value( $before );
 		if ( null === $value || '' === $value || ! $processor->set_attribute( 'lang', $value ) ) {
 			return $output;
 		}
@@ -776,6 +937,7 @@ class Front_End {
 		) {
 			return $output;
 		}
+		$this->record_attribute_change( 'html-lang', 'html', 'lang', is_string( $before ) ? $before : null, $value );
 		return trim( substr( $updated, 6, -1 ) );
 	}
 
@@ -821,6 +983,72 @@ class Front_End {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Keeps a change an attribute hook made, in "View repaired" only (never for visitors).
+	 *
+	 * @param string      $fix       Fix id.
+	 * @param string      $signature Element signature.
+	 * @param string      $attribute Attribute.
+	 * @param string|null $before    Value before, null when absent.
+	 * @param string      $after     Value after.
+	 * @return void
+	 */
+	private function record_attribute_change( string $fix, string $signature, string $attribute, $before, string $after ): void {
+		if ( Engine::MODE_ADMIN_REPAIRED !== $this->gate->mode() ) {
+			return;
+		}
+		$this->scanner->add_attribute_change( $fix, $this->state_of( $fix ), $signature, $attribute, $before, $after );
+	}
+
+	/**
+	 * Keeps the aria-label F19's attribute hook gave each more link, in "View repaired" only.
+	 *
+	 * @param string $before Markup before.
+	 * @param string $after  Markup after.
+	 * @return void
+	 */
+	private function record_more_link_changes( string $before, string $after ): void {
+		if ( Engine::MODE_ADMIN_REPAIRED !== $this->gate->mode() ) {
+			return;
+		}
+		$old   = new WP_HTML_Tag_Processor( $before );
+		$new   = new WP_HTML_Tag_Processor( $after );
+		$token = new Token();
+		while ( $old->next_tag( 'A' ) && $new->next_tag( 'A' ) ) {
+			$label = $new->get_attribute( 'aria-label' );
+			$was   = $old->get_attribute( 'aria-label' );
+			if ( ! is_string( $label ) || $label === $was ) {
+				continue;
+			}
+			$token->set_opener( $old, 0, 'A', null, array() );
+			$this->scanner->add_attribute_change( 'read-more-context', $this->state_of( 'read-more-context' ), $token->signature(), 'aria-label', is_string( $was ) ? $was : null, $label );
+		}
+		$token->clear();
+	}
+
+	/**
+	 * A privacy-stripped signature for an element known only by its attributes: tag, three classes, link or image path.
+	 *
+	 * @param string $tag  Tag name.
+	 * @param array  $attr Attribute values by name.
+	 * @return string
+	 */
+	private static function attribute_signature( string $tag, array $attr ): string {
+		$signature = $tag;
+		$classes   = isset( $attr['class'] ) && is_string( $attr['class'] ) ? preg_split( '/\s+/', $attr['class'], -1, PREG_SPLIT_NO_EMPTY ) : array();
+		foreach ( array_slice( (array) $classes, 0, 3 ) as $class ) {
+			$signature .= '.' . mb_substr( $class, 0, 40 );
+		}
+		foreach ( array( 'href', 'src' ) as $attribute ) {
+			if ( isset( $attr[ $attribute ] ) && is_string( $attr[ $attribute ] ) && '' !== $attr[ $attribute ] ) {
+				$path       = wp_parse_url( $attr[ $attribute ], PHP_URL_PATH );
+				$signature .= '[' . $attribute . '=' . mb_substr( is_string( $path ) ? $path : '', 0, 80 ) . ']';
+				break;
+			}
+		}
+		return mb_substr( $signature, 0, 200 );
 	}
 
 	/**

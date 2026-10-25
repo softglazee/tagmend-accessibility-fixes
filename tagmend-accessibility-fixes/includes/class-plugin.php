@@ -65,6 +65,34 @@ final class Plugin {
 	private $fixes_screen;
 
 	/**
+	 * Report table.
+	 *
+	 * @var Report\Pages_Store
+	 */
+	private $pages;
+
+	/**
+	 * Activity log.
+	 *
+	 * @var Report\Log_Store
+	 */
+	private $log;
+
+	/**
+	 * Scan links and report collector.
+	 *
+	 * @var Report\Scanner
+	 */
+	private $scanner;
+
+	/**
+	 * Table installer.
+	 *
+	 * @var Install
+	 */
+	private $install;
+
+	/**
 	 * Returns the single instance, creating it on first use.
 	 *
 	 * @return Plugin
@@ -83,18 +111,25 @@ final class Plugin {
 		$this->registry     = new Registry();
 		$this->settings     = new Settings( $this->registry );
 		$this->gate         = new Request_Gate( $this->settings );
-		$this->front_end    = new Front_End( $this->gate, $this->registry, $this->settings );
+		$this->pages        = new Report\Pages_Store();
+		$this->log          = new Report\Log_Store();
+		$this->scanner      = new Report\Scanner( $this->gate, $this->pages, $this->log );
+		$this->front_end    = new Front_End( $this->gate, $this->registry, $this->settings, $this->scanner );
 		$this->fixes_screen = new Admin\Screen_Fixes( $this->registry, $this->settings );
+		$this->install      = new Install( $this->settings, $this->log );
 
-		register_activation_hook( SOFTGLAZE_A11Y_FILE, array( $this->settings, 'activate' ) );
+		register_activation_hook( SOFTGLAZE_A11Y_FILE, array( $this->install, 'activate' ) );
 		add_action( 'init', array( $this->settings, 'register' ) );
+		add_action( 'softglaze_a11y_fix_state_changed', array( $this->log, 'record_state_change' ), 10, 4 );
+		( new Rest_Controller( $this->scanner ) )->register();
 
 		if ( is_admin() ) {
 			add_action( 'admin_menu', array( $this, 'register_menu' ) );
 			$this->fixes_screen->register();
+			$this->install->register();
 		} elseif ( ! $this->gate->kill_switch() ) {
 			$this->front_end->register();
-			( new Admin\Admin_Bar( $this->settings, $this->gate ) )->register();
+			( new Admin\Admin_Bar( $this->settings, $this->gate, $this->scanner ) )->register();
 		}
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
@@ -145,6 +180,42 @@ final class Plugin {
 	 */
 	public function fixes_screen(): Admin\Screen_Fixes {
 		return $this->fixes_screen;
+	}
+
+	/**
+	 * Report table.
+	 *
+	 * @return Report\Pages_Store
+	 */
+	public function pages(): Report\Pages_Store {
+		return $this->pages;
+	}
+
+	/**
+	 * Activity log.
+	 *
+	 * @return Report\Log_Store
+	 */
+	public function log(): Report\Log_Store {
+		return $this->log;
+	}
+
+	/**
+	 * Scan links and report collector.
+	 *
+	 * @return Report\Scanner
+	 */
+	public function scanner(): Report\Scanner {
+		return $this->scanner;
+	}
+
+	/**
+	 * Table installer.
+	 *
+	 * @return Install
+	 */
+	public function install(): Install {
+		return $this->install;
 	}
 
 	/**

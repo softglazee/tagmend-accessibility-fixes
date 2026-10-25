@@ -7,6 +7,7 @@
 
 namespace SoftGlaze\AccessibilityRepair\Admin;
 
+use SoftGlaze\AccessibilityRepair\Report\Scanner;
 use SoftGlaze\AccessibilityRepair\Request_Gate;
 use SoftGlaze\AccessibilityRepair\Settings;
 use WP_Admin_Bar;
@@ -16,10 +17,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Adds "View original" and "View repaired (Live + Preview)" links for the
- * current page, each carrying a nonce for the softglaze_a11y_view action
- * (blueprint section 10.2). Front end only, users who can manage options
- * only, no CSS or JavaScript.
+ * Adds "View original", "View repaired (Live + Preview)", "Changes on this
+ * page (N)" and "Scan this page" for the current page (blueprint section
+ * 10.2). The view links carry a nonce for the softglaze_a11y_view action,
+ * the scan link one for softglaze_a11y_scan. N is the number of Live and
+ * Preview changes in the last stored report of this URL. Front end only,
+ * users who can manage options only, no CSS or JavaScript. During a scan the
+ * admin bar is switched off, so the node is not shown.
  */
 final class Admin_Bar {
 
@@ -33,21 +37,30 @@ final class Admin_Bar {
 	private $settings;
 
 	/**
-	 * Request gate (current URI).
+	 * Request gate (current URI and URL hash).
 	 *
 	 * @var Request_Gate
 	 */
 	private $gate;
 
 	/**
+	 * Scan links and the report table.
+	 *
+	 * @var Scanner
+	 */
+	private $scanner;
+
+	/**
 	 * Creates the node builder.
 	 *
 	 * @param Settings     $settings Settings.
 	 * @param Request_Gate $gate     Request gate.
+	 * @param Scanner      $scanner  Scan links and the report table.
 	 */
-	public function __construct( Settings $settings, Request_Gate $gate ) {
+	public function __construct( Settings $settings, Request_Gate $gate, Scanner $scanner ) {
 		$this->settings = $settings;
 		$this->gate     = $gate;
+		$this->scanner  = $scanner;
 	}
 
 	/**
@@ -60,7 +73,7 @@ final class Admin_Bar {
 	}
 
 	/**
-	 * Adds the node and its view links.
+	 * Adds the node and its links.
 	 *
 	 * @param WP_Admin_Bar $admin_bar The admin bar.
 	 * @return void
@@ -70,12 +83,25 @@ final class Admin_Bar {
 			return;
 		}
 
-		$page_uri = remove_query_arg( array( Request_Gate::VIEW_ARG, Request_Gate::VIEW_NONCE_ARG ), $this->gate->request_uri() );
+		$page_uri = remove_query_arg( array( Request_Gate::VIEW_ARG, Request_Gate::VIEW_NONCE_ARG, Request_Gate::SCAN_ARG, Request_Gate::SCAN_NONCE_ARG ), $this->gate->request_uri() );
 		$nonce    = wp_create_nonce( Request_Gate::VIEW_ACTION );
+		$report   = $this->scanner->pages()->get_by_hash( $this->gate->url_hash() );
 
 		$node_title_escaped     = esc_html__( 'Tagmend', 'tagmend-accessibility-fixes' );
 		$original_title_escaped = esc_html__( 'View original', 'tagmend-accessibility-fixes' );
 		$repaired_title_escaped = esc_html__( 'View repaired (Live + Preview)', 'tagmend-accessibility-fixes' );
+		$scan_title_escaped     = esc_html__( 'Scan this page', 'tagmend-accessibility-fixes' );
+		if ( null === $report ) {
+			$changes_title_escaped = esc_html__( 'Changes on this page (not scanned yet)', 'tagmend-accessibility-fixes' );
+		} else {
+			$changes_title_escaped = esc_html(
+				sprintf(
+					/* translators: %s: number of Live and Preview changes in the last report of this page */
+					__( 'Changes on this page (%s)', 'tagmend-accessibility-fixes' ),
+					number_format_i18n( (int) $report['changes_live'] + (int) $report['changes_preview'] )
+				)
+			);
+		}
 
 		$admin_bar->add_node(
 			array(
@@ -112,6 +138,22 @@ final class Admin_Bar {
 				),
 			)
 		);
-		// TODO(Phase 6A): "Changes on this page (N)" and "Scan this page"; no node in scan mode. TODO(Phase 7): the Settings toggle for this node.
+		// TODO(Phase 6B): link this item to the Report details screen of this URL.
+		$admin_bar->add_node(
+			array(
+				'parent' => self::NODE,
+				'id'     => self::NODE . '-changes',
+				'title'  => $changes_title_escaped,
+			)
+		);
+		$admin_bar->add_node(
+			array(
+				'parent' => self::NODE,
+				'id'     => self::NODE . '-scan',
+				'title'  => $scan_title_escaped,
+				'href'   => $this->scanner->scan_url( $page_uri ),
+			)
+		);
+		// TODO(Phase 7): the Settings screen toggle for this node (the setting already exists).
 	}
 }
