@@ -62,6 +62,15 @@ abstract class Check_Base {
 	}
 
 	/**
+	 * Whether the check reads the landmarks (see Fix_Base::uses_landmarks()).
+	 *
+	 * @return bool
+	 */
+	public function uses_landmarks(): bool {
+		return false;
+	}
+
+	/**
 	 * Subset of array( 'content', 'page' ).
 	 *
 	 * @return string[]

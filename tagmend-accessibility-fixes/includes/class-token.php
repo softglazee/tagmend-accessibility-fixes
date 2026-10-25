@@ -143,6 +143,17 @@ final class Token {
 	}
 
 	/**
+	 * Text that belongs to the opener itself (the content of title, textarea,
+	 * script and style elements), decoded where the HTML API decodes it; ''
+	 * for other tokens and on a closer.
+	 *
+	 * @return string
+	 */
+	public function modifiable_text(): string {
+		return null === $this->processor ? '' : $this->processor->get_modifiable_text();
+	}
+
+	/**
 	 * Attribute value as trimmed text; '' when absent, boolean or empty.
 	 *
 	 * @param string $name Attribute name.

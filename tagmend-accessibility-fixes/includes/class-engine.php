@@ -275,6 +275,13 @@ class Engine {
 	private $names = false;
 
 	/**
+	 * Whether this run records main and navigation landmarks (an active fix or check uses them).
+	 *
+	 * @var bool
+	 */
+	private $landmarks = false;
+
+	/**
 	 * Naming facts of the open links, buttons and role="button" / role="link"
 	 * elements, outermost first.
 	 *
@@ -316,6 +323,16 @@ class Engine {
 	 * @var Check_Base[]
 	 */
 	private $check_all = array();
+
+	/**
+	 * Tag => fixes, then tag => checks, that see it in the current run (built on first use per tag).
+	 *
+	 * @var array
+	 */
+	private $dispatch = array(
+		'fixes'  => array(),
+		'checks' => array(),
+	);
 
 	/**
 	 * Index of the current run.
@@ -608,17 +625,23 @@ class Engine {
 		$this->containers      = array();
 		$this->hidden_open     = 0;
 		$this->names           = false;
+		$this->landmarks       = false;
 		$this->listeners       = array();
 		$this->listen_all      = array();
 		$this->check_listeners = array();
 		$this->check_all       = array();
+		$this->dispatch        = array(
+			'fixes'  => array(),
+			'checks' => array(),
+		);
 
 		foreach ( $fixes as $fix ) {
 			$tags = array();
 			if ( $fix instanceof Fix_Base ) {
 				$fix->reset();
-				$tags        = $fix->tags();
-				$this->names = $this->names || $fix->uses_names();
+				$tags            = $fix->tags();
+				$this->names     = $this->names || $fix->uses_names();
+				$this->landmarks = $this->landmarks || $fix->uses_landmarks();
 			}
 			if ( empty( $tags ) ) {
 				$this->listen_all[] = $fix;
@@ -633,8 +656,9 @@ class Engine {
 		}
 		foreach ( $checks as $check ) {
 			$check->reset();
-			$tags        = $check->tags();
-			$this->names = $this->names || $check->uses_names();
+			$tags            = $check->tags();
+			$this->names     = $this->names || $check->uses_names();
+			$this->landmarks = $this->landmarks || $check->uses_landmarks();
 			if ( empty( $tags ) ) {
 				$this->check_all[] = $check;
 				continue;
@@ -746,18 +770,24 @@ class Engine {
 		} elseif ( isset( self::HEADINGS[ $name ] ) && ! empty( $this->stack ) && isset( self::HEADINGS[ end( $this->stack )->tag ] ) ) {
 			$this->pop_to( count( $this->stack ) - 1 );
 		}
+		if ( ! empty( $this->stack ) && 'BR' !== $name && 'WBR' !== $name ) {
+			++$this->stack[ count( $this->stack ) - 1 ]->elements;
+		}
 
 		$in_svg      = ! empty( $this->open_tags['SVG'] );
 		$aria_hidden = $processor->get_attribute( 'aria-hidden' );
 		$hidden      = is_string( $aria_hidden ) && 'true' === strtolower( trim( $aria_hidden ) );
 		$barrier     = $hidden;
 		$role        = '';
-		if ( $this->names ) {
+		if ( $this->names || $this->landmarks ) {
 			$role = $processor->get_attribute( 'role' );
 			$role = is_string( $role ) ? strtolower( trim( $role ) ) : '';
-			if ( '' !== $id ) {
-				$this->index->set_menu( $id, self::is_menu( $processor, $name, $role ) );
-			}
+		}
+		if ( $this->names && '' !== $id ) {
+			$this->index->set_menu( $id, self::is_menu( $processor, $name, $role ) );
+		}
+		if ( $this->landmarks ) {
+			$this->landmark_facts( $processor, $ordinal, $name, $role, $id, $hidden );
 		}
 
 		if ( $this->collecting > 0 && ! $hidden ) {
@@ -914,6 +944,52 @@ class Engine {
 		}
 		$this->index->add_name( $accessible );
 		return $accessible;
+	}
+
+	/**
+	 * Records a main or navigation landmark: a main or nav element without a
+	 * different explicit role, or any element whose first role token is main
+	 * or navigation.
+	 *
+	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
+	 * @param int                   $ordinal   Opener ordinal.
+	 * @param string                $name      Upper-case tag name.
+	 * @param string                $role      Lower-case explicit role, or ''.
+	 * @param string                $id        Trimmed id, or ''.
+	 * @param bool                  $hidden    Whether the opener carries aria-hidden="true".
+	 * @return void
+	 */
+	private function landmark_facts( WP_HTML_Tag_Processor $processor, int $ordinal, string $name, string $role, string $id, bool $hidden ): void {
+		if ( '' !== $role ) {
+			$tokens   = preg_split( '/\s+/', $role, 2 );
+			$first    = is_array( $tokens ) ? $tokens[0] : '';
+			$landmark = 'main' === $first || 'navigation' === $first ? $first : '';
+		} else {
+			$landmark = 'MAIN' === $name ? 'main' : ( 'NAV' === $name ? 'navigation' : '' );
+		}
+		if ( '' === $landmark ) {
+			return;
+		}
+
+		$label      = $processor->get_attribute( 'aria-label' );
+		$labelledby = $processor->get_attribute( 'aria-labelledby' );
+		$signature  = '';
+		if ( $this->recorder->is_recording() ) {
+			$this->token->set_opener( $processor, $ordinal, $name, null, array() );
+			$signature = $this->token->signature();
+		}
+		$this->index->add_landmark(
+			array(
+				'ordinal'    => $ordinal,
+				'tag'        => $name,
+				'sig'        => $signature,
+				'role'       => $landmark,
+				'id'         => $id,
+				'label'      => is_string( $label ) ? trim( $label ) : '',
+				'labelledby' => is_string( $labelledby ) ? trim( $labelledby ) : '',
+				'hidden'     => $hidden || $this->hidden_open > 0 || null !== $processor->get_attribute( 'hidden' ),
+			)
+		);
 	}
 
 	/**
@@ -1118,10 +1194,10 @@ class Engine {
 	 * @return Fix[]
 	 */
 	private function listeners_for( string $name ): array {
-		if ( isset( $this->listeners[ $name ] ) ) {
-			return empty( $this->listen_all ) ? $this->listeners[ $name ] : array_merge( $this->listeners[ $name ], $this->listen_all );
+		if ( ! isset( $this->dispatch['fixes'][ $name ] ) ) {
+			$this->dispatch['fixes'][ $name ] = isset( $this->listeners[ $name ] ) ? array_merge( $this->listeners[ $name ], $this->listen_all ) : $this->listen_all;
 		}
-		return $this->listen_all;
+		return $this->dispatch['fixes'][ $name ];
 	}
 
 	/**
@@ -1131,10 +1207,10 @@ class Engine {
 	 * @return Check_Base[]
 	 */
 	private function checks_for( string $name ): array {
-		if ( isset( $this->check_listeners[ $name ] ) ) {
-			return empty( $this->check_all ) ? $this->check_listeners[ $name ] : array_merge( $this->check_listeners[ $name ], $this->check_all );
+		if ( ! isset( $this->dispatch['checks'][ $name ] ) ) {
+			$this->dispatch['checks'][ $name ] = isset( $this->check_listeners[ $name ] ) ? array_merge( $this->check_listeners[ $name ], $this->check_all ) : $this->check_all;
 		}
-		return $this->check_all;
+		return $this->dispatch['checks'][ $name ];
 	}
 
 	/**
@@ -1282,5 +1358,9 @@ class Engine {
 		$this->hidden_open = 0;
 		$this->index       = null;
 		$this->plan        = null;
+		$this->dispatch    = array(
+			'fixes'  => array(),
+			'checks' => array(),
+		);
 	}
 }

@@ -96,7 +96,16 @@ final class Document_Index {
 	 */
 	private $menus = array();
 
-	// TODO(Phase 4A): skip links, main elements and headings for F11, F12 and F20.
+	/**
+	 * Main and navigation landmarks in document order, recorded when a fix
+	 * or check uses landmarks. Each entry: ordinal, tag, sig, role ('main' or
+	 * 'navigation'), id, label (trimmed aria-label), labelledby (trimmed
+	 * aria-labelledby), hidden (hidden attribute or aria-hidden on it or an
+	 * ancestor).
+	 *
+	 * @var array[]
+	 */
+	private $landmarks = array();
 
 	/**
 	 * Creates an empty index.
@@ -292,5 +301,42 @@ final class Document_Index {
 	 */
 	public function is_menu( string $id ): bool {
 		return ! empty( $this->menus[ $id ] );
+	}
+
+	/**
+	 * Records a main or navigation landmark.
+	 *
+	 * @param array $landmark Facts (see the property).
+	 * @return void
+	 */
+	public function add_landmark( array $landmark ): void {
+		$this->landmarks[] = $landmark;
+	}
+
+	/**
+	 * Landmarks with a role, in document order; hidden ones only when asked.
+	 *
+	 * @param string $role           'main' or 'navigation'.
+	 * @param bool   $include_hidden Whether hidden landmarks are included.
+	 * @return array[]
+	 */
+	public function landmarks( string $role, bool $include_hidden = false ): array {
+		$found = array();
+		foreach ( $this->landmarks as $landmark ) {
+			if ( $role === $landmark['role'] && ( $include_hidden || ! $landmark['hidden'] ) ) {
+				$found[] = $landmark;
+			}
+		}
+		return $found;
+	}
+
+	/**
+	 * The only visible main landmark, or null when there are none or several.
+	 *
+	 * @return array|null
+	 */
+	public function single_main() {
+		$mains = $this->landmarks( 'main' );
+		return 1 === count( $mains ) ? $mains[0] : null;
 	}
 }

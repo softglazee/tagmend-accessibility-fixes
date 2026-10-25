@@ -51,6 +51,17 @@ abstract class Fix_Base implements Fix {
 	}
 
 	/**
+	 * Whether the fix reads the main and navigation landmarks of the document
+	 * (Document_Index::landmarks()). The engine reads every opener's role for
+	 * them only when an active fix or check asks.
+	 *
+	 * @return bool
+	 */
+	public function uses_landmarks(): bool {
+		return false;
+	}
+
+	/**
 	 * Lower runs earlier and wins when two fixes propose the same attribute.
 	 *
 	 * @return int

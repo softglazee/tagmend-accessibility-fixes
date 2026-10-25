@@ -74,6 +74,15 @@ final class Element {
 	public $nested = 0;
 
 	/**
+	 * Element openers (other than br and wbr) seen while this frame was the
+	 * innermost open frame. A tracked child counts once when it opens, so
+	 * zero means the element holds no element at all.
+	 *
+	 * @var int
+	 */
+	public $elements = 0;
+
+	/**
 	 * Free storage for fixes that decide when the element closes.
 	 *
 	 * @var array

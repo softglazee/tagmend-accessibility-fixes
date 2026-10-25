@@ -20,8 +20,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * - Layer A, attribute hooks: language_attributes for F10,
  *   wp_get_attachment_image_attributes for F04, the_content_more_link and
- *   excerpt_more for F19; and the hidden new-tab note printed on wp_footer
- *   for F21.
+ *   excerpt_more for F19, wp_nav_menu_args for F18; our own skip link
+ *   printed on wp_body_open for F11 (only together with Layer C, which
+ *   settles it) and the hidden new-tab note printed on wp_footer for F21.
+ *   F22 only enqueues a fixed stylesheet.
  * - Layer C, the whole page: a callback on core's
  *   wp_template_enhancement_output_buffer filter (WordPress 6.9+), only when
  *   a fix applied in this mode needs page scope. Core owns the buffer.
@@ -62,6 +64,21 @@ class Front_End {
 	 * F04 runs after WooCommerce's and the theme's own attribute filters.
 	 */
 	const ATTACHMENT_PRIORITY = 20;
+
+	/**
+	 * F11's link comes right after the toolbar (core renders it at 0) and before a theme's own body output.
+	 */
+	const SKIP_LINK_PRIORITY = 1;
+
+	/**
+	 * F18 runs after a theme's own menu-argument filters.
+	 */
+	const NAV_MENU_PRIORITY = 20;
+
+	/**
+	 * F22's stylesheet is enqueued after the theme's styles.
+	 */
+	const STYLES_PRIORITY = 20;
 
 	/**
 	 * Core's template enhancement filter (WordPress 6.9+); our callback runs after core's own at 10.
@@ -164,6 +181,20 @@ class Front_End {
 	private $new_tab_printed = false;
 
 	/**
+	 * Whether F11's printer is hooked on this request.
+	 *
+	 * @var bool
+	 */
+	private $skip_link_hooked = false;
+
+	/**
+	 * Whether F11's printer ran on this request (printed, or stood back for core's link).
+	 *
+	 * @var bool
+	 */
+	private $skip_link_done = false;
+
+	/**
 	 * Creates the wiring.
 	 *
 	 * @param Request_Gate $gate     Request gate.
@@ -227,6 +258,15 @@ class Front_End {
 			add_action( 'wp_footer', array( $this, 'print_new_tab_note' ), self::FOOTER_PRIORITY );
 		}
 
+		if ( in_array( $this->state_of( 'nav-labels' ), $applied, true ) && $this->registry->get( 'nav-labels' ) instanceof Fixes\Fix_Nav_Labels ) {
+			add_filter( 'wp_nav_menu_args', array( $this, 'filter_nav_menu_args' ), self::NAV_MENU_PRIORITY );
+			$this->layers['attribute'] = true;
+		}
+
+		if ( in_array( $this->state_of( 'focus-visible' ), $applied, true ) && $this->registry->get( 'focus-visible' ) instanceof Fixes\Fix_Focus_Visible ) {
+			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_focus_visible' ), self::STYLES_PRIORITY );
+		}
+
 		if ( $this->page_pass_available() && $this->needs_scope( Engine::SCOPE_PAGE, $applied ) ) {
 			add_filter( self::PAGE_FILTER, array( $this, 'filter_page' ), self::PAGE_PRIORITY, 2 );
 			$this->layers['page'] = true;
@@ -235,6 +275,12 @@ class Front_End {
 				add_filter( $hook, array( $this, 'filter_content' ), $priority );
 			}
 			$this->layers['content'] = true;
+		}
+
+		// Our skip link is printed only when the page pass will settle it (target id, or hidden).
+		if ( ! empty( $this->layers['page'] ) && in_array( $this->state_of( 'skip-link' ), $applied, true ) && $this->registry->get( 'skip-link' ) instanceof Fixes\Fix_Skip_Link ) {
+			add_action( 'wp_body_open', array( $this, 'print_skip_link' ), self::SKIP_LINK_PRIORITY );
+			$this->skip_link_hooked = true;
 		}
 
 		if ( ! empty( $this->layers ) ) {
@@ -329,6 +375,64 @@ class Front_End {
 	}
 
 	/**
+	 * Prints F11's link once at the start of wp_body_open, escaped as it is
+	 * built, and enqueues its stylesheet; stands back when core's block-theme
+	 * skip link is active. The page pass then points the link at the main
+	 * content or hides it.
+	 *
+	 * @return void
+	 */
+	public function print_skip_link(): void {
+		$fix = $this->registry->get( 'skip-link' );
+		if ( $this->skip_link_done || ! $fix instanceof Fixes\Fix_Skip_Link || ! $this->gate->passes() ) {
+			return;
+		}
+		$this->skip_link_done = true;
+		if ( Fixes\Fix_Skip_Link::core_skip_link_active() ) {
+			$fix->set_printer( Fixes\Fix_Skip_Link::PRINTER_CORE );
+			return;
+		}
+		$fix->set_printer( Fixes\Fix_Skip_Link::PRINTER_PRINTED );
+		printf(
+			'<a class="%1$s screen-reader-text" href="%2$s">%3$s</a>',
+			esc_attr( Fixes\Fix_Skip_Link::LINK_CLASS ),
+			esc_url( '#' . Fixes\Fix_Skip_Link::TARGET_ID ),
+			esc_html( Fixes\Fix_Skip_Link::link_text() )
+		);
+		wp_enqueue_style( Fixes\Fix_Skip_Link::STYLE_HANDLE, plugins_url( Fixes\Fix_Skip_Link::STYLE_FILE, SOFTGLAZE_A11Y_FILE ), array(), SOFTGLAZE_A11Y_VERSION );
+	}
+
+	/**
+	 * Layer A for F18: a label for wp_nav_menu() navs without one. Returns the input on any error.
+	 *
+	 * @param array $args wp_nav_menu() arguments.
+	 * @return array
+	 */
+	public function filter_nav_menu_args( $args ) {
+		if ( ! is_array( $args ) || ! $this->gate->passes() ) {
+			return $args;
+		}
+		try {
+			$fix = $this->registry->get( 'nav-labels' );
+			return $fix instanceof Fixes\Fix_Nav_Labels ? $fix->filter_args( $args ) : $args;
+		} catch ( Throwable $throwable ) {
+			return $args;
+		}
+	}
+
+	/**
+	 * Enqueues F22's fixed stylesheet.
+	 *
+	 * @return void
+	 */
+	public function enqueue_focus_visible(): void {
+		if ( ! $this->gate->passes() ) {
+			return;
+		}
+		wp_enqueue_style( Fixes\Fix_Focus_Visible::STYLE_HANDLE, plugins_url( Fixes\Fix_Focus_Visible::STYLE_FILE, SOFTGLAZE_A11Y_FILE ), array(), SOFTGLAZE_A11Y_VERSION );
+	}
+
+	/**
 	 * Layer B: repairs a content fragment.
 	 *
 	 * @param string $html Fragment.
@@ -355,6 +459,11 @@ class Front_End {
 		if ( ! is_string( $filtered_output ) || '' === $filtered_output || ! $this->gate->passes() ) {
 			return $filtered_output;
 		}
+		$skip_link = $this->registry->get( 'skip-link' );
+		if ( $this->skip_link_hooked && ! $this->skip_link_done && 0 === did_action( 'wp_body_open' ) && $skip_link instanceof Fixes\Fix_Skip_Link ) {
+			$skip_link->set_printer( Fixes\Fix_Skip_Link::PRINTER_NO_HOOK );
+		}
+		// TODO(Phase 7): when this run falls back (size, time), F11's printed link keeps href="#softglaze-a11y-main" without a target.
 		$repaired = $this->repair( $filtered_output, Engine::SCOPE_PAGE );
 		if ( $this->gate->is_admin_view() ) {
 			$this->send_server_timing();
@@ -446,18 +555,24 @@ class Front_End {
 	 * @return void
 	 */
 	public function reset(): void {
-		$this->engine          = null;
-		$this->states          = null;
-		$this->layers          = array();
-		$this->fallbacks       = array();
-		$this->url_hash        = '';
-		$this->engine_ms       = 0.0;
-		$this->no_cache        = false;
-		$this->new_tab_used    = false;
-		$this->new_tab_printed = false;
-		$fix                   = $this->registry->get( 'new-tab-note' );
+		$this->engine           = null;
+		$this->states           = null;
+		$this->layers           = array();
+		$this->fallbacks        = array();
+		$this->url_hash         = '';
+		$this->engine_ms        = 0.0;
+		$this->no_cache         = false;
+		$this->new_tab_used     = false;
+		$this->new_tab_printed  = false;
+		$this->skip_link_hooked = false;
+		$this->skip_link_done   = false;
+		$fix                    = $this->registry->get( 'new-tab-note' );
 		if ( $fix instanceof Fixes\Fix_New_Tab_Note ) {
 			$fix->set_note_available( true );
+		}
+		$fix = $this->registry->get( 'skip-link' );
+		if ( $fix instanceof Fixes\Fix_Skip_Link ) {
+			$fix->set_printer( Fixes\Fix_Skip_Link::PRINTER_UNKNOWN );
 		}
 	}
 
