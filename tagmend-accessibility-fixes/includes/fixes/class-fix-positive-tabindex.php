@@ -90,12 +90,12 @@ final class Fix_Positive_Tabindex extends Fix_Base {
 	}
 
 	/**
-	 * Every opener: tabindex can be on any element.
+	 * Every opener that carries tabindex (it can be on any element).
 	 *
 	 * @return string[]
 	 */
 	public function tags(): array {
-		return array();
+		return array( self::WITH_ATTRIBUTE . 'tabindex' );
 	}
 
 	/**

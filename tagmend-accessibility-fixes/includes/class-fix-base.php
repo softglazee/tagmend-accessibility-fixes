@@ -37,9 +37,18 @@ abstract class Fix_Base implements Fix {
 	const IN_HIDDEN = '#aria-hidden';
 
 	/**
+	 * Prefix of an attribute entry in tags(): '@tabindex' means every opener
+	 * that carries a tabindex attribute, whatever its tag (openers only, each
+	 * one once). Cheaper than seeing every opener when an attribute can sit on
+	 * any element.
+	 */
+	const WITH_ATTRIBUTE = '@';
+
+	/**
 	 * Upper-case tag names whose openers (and tracked closers) this fix sees.
 	 * An empty array means every opener; array( self::FINISH_ONLY ) means none;
-	 * self::IN_HIDDEN adds the openers in aria-hidden content.
+	 * self::IN_HIDDEN adds the openers in aria-hidden content; an entry
+	 * starting with self::WITH_ATTRIBUTE adds the openers carrying that attribute.
 	 *
 	 * @return string[]
 	 */

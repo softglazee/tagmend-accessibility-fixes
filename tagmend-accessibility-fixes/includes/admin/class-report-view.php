@@ -70,6 +70,7 @@ final class Report_View {
 	 */
 	public static function check_label( string $check ): string {
 		$labels = array(
+			'R01' => __( 'Text contrast of declared colours', 'tagmend-accessibility-fixes' ),
 			'R02' => __( 'Heading structure', 'tagmend-accessibility-fixes' ),
 			'R03' => __( 'Alt text to review', 'tagmend-accessibility-fixes' ),
 			'R04' => __( 'Images the plugin could not describe', 'tagmend-accessibility-fixes' ),

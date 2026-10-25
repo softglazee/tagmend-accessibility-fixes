@@ -775,7 +775,8 @@ class Front_End {
 				array(
 					'max_bytes' => $this->settings->max_bytes(),
 					'max_ms'    => $this->settings->max_ms(),
-					'checks'    => $this->registry->checks(),
+					// Report-only checks never run for visitors: their classes are not even loaded then.
+					'checks'    => isset( Engine::MODE_CHECKS[ $this->gate->mode() ] ) ? $this->registry->checks() : array(),
 				)
 			);
 		}

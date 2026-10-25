@@ -129,6 +129,15 @@ class Engine {
 	);
 
 	/**
+	 * Other elements open_tag() treats specially by their tag: SVG titles
+	 * (text and the has_svg_title flag) and search elements (search forms).
+	 */
+	const PLAIN_NEVER = array(
+		'TITLE'  => true,
+		'SEARCH' => true,
+	);
+
+	/**
 	 * Elements inside a link or button that the naming facts count (images,
 	 * SVG) or take icon class names from.
 	 */
@@ -326,6 +335,21 @@ class Engine {
 	private $hidden_listeners = array();
 
 	/**
+	 * Lower-case attribute name => fixes that see every opener carrying it
+	 * (Fix_Base::WITH_ATTRIBUTE entries in tags()), for the current run.
+	 *
+	 * @var array
+	 */
+	private $attribute_listeners = array();
+
+	/**
+	 * Lower-case attribute name => checks that see every opener carrying it, for the current run.
+	 *
+	 * @var array
+	 */
+	private $attribute_checks = array();
+
+	/**
 	 * Tag => checks listening to it, for the current run.
 	 *
 	 * @var array
@@ -350,6 +374,22 @@ class Engine {
 		'checks' => array(),
 		'hidden' => array(),
 	);
+
+	/**
+	 * Lower-case attribute names that make an opener worth a closer look in
+	 * the current run (see open_tag()).
+	 *
+	 * @var bool[]
+	 */
+	private $interesting = array();
+
+	/**
+	 * Upper-case tag => whether openers of that tag are plain in the current
+	 * run: not tracked, not named, no listener (built on first use per tag).
+	 *
+	 * @var bool[]
+	 */
+	private $plain = array();
 
 	/**
 	 * Index of the current run.
@@ -636,20 +676,22 @@ class Engine {
 	 * @return int|null
 	 */
 	private function analyse( string $html, array $fixes, array $checks, $deadline ) {
-		$this->stack            = array();
-		$this->open_tags        = array();
-		$this->collecting       = 0;
-		$this->containers       = array();
-		$this->hidden_open      = 0;
-		$this->names            = false;
-		$this->landmarks        = false;
-		$this->controls         = false;
-		$this->listeners        = array();
-		$this->listen_all       = array();
-		$this->hidden_listeners = array();
-		$this->check_listeners  = array();
-		$this->check_all        = array();
-		$this->dispatch         = array(
+		$this->stack               = array();
+		$this->open_tags           = array();
+		$this->collecting          = 0;
+		$this->containers          = array();
+		$this->hidden_open         = 0;
+		$this->names               = false;
+		$this->landmarks           = false;
+		$this->controls            = false;
+		$this->listeners           = array();
+		$this->listen_all          = array();
+		$this->hidden_listeners    = array();
+		$this->attribute_listeners = array();
+		$this->check_listeners     = array();
+		$this->check_all           = array();
+		$this->attribute_checks    = array();
+		$this->dispatch            = array(
 			'fixes'  => array(),
 			'checks' => array(),
 			'hidden' => array(),
@@ -674,9 +716,11 @@ class Engine {
 			foreach ( $tags as $tag ) {
 				if ( Fix_Base::IN_HIDDEN === $tag ) {
 					$this->hidden_listeners[] = $fix;
-					continue;
+				} elseif ( 0 === strpos( $tag, Fix_Base::WITH_ATTRIBUTE ) ) {
+					$this->attribute_listeners[ strtolower( substr( $tag, 1 ) ) ][] = $fix;
+				} else {
+					$this->listeners[ strtoupper( $tag ) ][] = $fix;
 				}
-				$this->listeners[ strtoupper( $tag ) ][] = $fix;
 			}
 		}
 		foreach ( $checks as $check ) {
@@ -693,8 +737,29 @@ class Engine {
 				continue;
 			}
 			foreach ( $tags as $tag ) {
-				$this->check_listeners[ strtoupper( $tag ) ][] = $check;
+				if ( 0 === strpos( $tag, Fix_Base::WITH_ATTRIBUTE ) ) {
+					$this->attribute_checks[ strtolower( substr( $tag, 1 ) ) ][] = $check;
+				} else {
+					$this->check_listeners[ strtoupper( $tag ) ][] = $check;
+				}
 			}
+		}
+
+		$this->plain       = array();
+		$this->interesting = array(
+			'id'          => true,
+			'aria-hidden' => true,
+			'aria-label'  => true,
+			'hidden'      => true,
+		);
+		if ( $this->names || $this->landmarks ) {
+			$this->interesting['role'] = true;
+		}
+		if ( $this->controls ) {
+			$this->interesting['aria-controls'] = true;
+		}
+		foreach ( array_keys( $this->attribute_listeners + $this->attribute_checks ) as $attribute ) {
+			$this->interesting[ $attribute ] = true;
 		}
 
 		$processor = $this->create_processor( $html, 'analyse' );
@@ -721,7 +786,10 @@ class Engine {
 
 			$name = (string) $processor->get_token_name();
 			if ( ! self::is_opener( $processor, $type ) ) {
-				$this->close_tag( $name );
+				// Most end tags close nothing the pass tracks.
+				if ( ! empty( $this->open_tags[ $name ] ) || isset( self::HEADINGS[ $name ] ) ) {
+					$this->close_tag( $name );
+				}
 				continue;
 			}
 
@@ -780,13 +848,36 @@ class Engine {
 	 * @return void
 	 */
 	private function open_tag( WP_HTML_Tag_Processor $processor, int $ordinal, string $name ): void {
-		$id = $processor->get_attribute( 'id' );
-		$id = is_string( $id ) ? trim( $id ) : '';
+		// Attribute names once per opener; values are read only for the attributes present.
+		$present = $processor->get_attribute_names_with_prefix( '' );
+		$present = empty( $present ) ? array() : array_flip( $present );
+
+		$plain = isset( $this->plain[ $name ] ) ? $this->plain[ $name ] : $this->is_plain( $name );
+		if ( $plain && ( 0 === $this->hidden_open || empty( $this->hidden_listeners ) ) ) {
+			foreach ( $present as $attribute => $position ) {
+				if ( isset( $this->interesting[ $attribute ] ) ) {
+					$plain = false;
+					break;
+				}
+			}
+			if ( $plain ) {
+				$this->open_plain( $processor, $name );
+				return;
+			}
+		}
+
+		$id = '';
+		if ( isset( $present['id'] ) ) {
+			$id = $processor->get_attribute( 'id' );
+			$id = is_string( $id ) ? trim( $id ) : '';
+		}
 		$this->index->add_opener( $name, $id );
 		$for = '';
 		if ( 'LABEL' === $name ) {
-			$for = $processor->get_attribute( 'for' );
-			$for = is_string( $for ) ? trim( $for ) : '';
+			if ( isset( $present['for'] ) ) {
+				$for = $processor->get_attribute( 'for' );
+				$for = is_string( $for ) ? trim( $for ) : '';
+			}
 			$this->index->add_label_for( $for );
 		}
 
@@ -796,26 +887,30 @@ class Engine {
 		} elseif ( isset( self::HEADINGS[ $name ] ) && ! empty( $this->stack ) && isset( self::HEADINGS[ end( $this->stack )->tag ] ) ) {
 			$this->pop_to( count( $this->stack ) - 1 );
 		}
-		if ( ! empty( $this->stack ) && 'BR' !== $name && 'WBR' !== $name ) {
-			++$this->stack[ count( $this->stack ) - 1 ]->elements;
+		$depth = count( $this->stack );
+		if ( $depth > 0 && 'BR' !== $name && 'WBR' !== $name ) {
+			++$this->stack[ $depth - 1 ]->elements;
 		}
 
-		$in_svg      = ! empty( $this->open_tags['SVG'] );
-		$aria_hidden = $processor->get_attribute( 'aria-hidden' );
-		$hidden      = is_string( $aria_hidden ) && 'true' === strtolower( trim( $aria_hidden ) );
-		$barrier     = $hidden;
-		$role        = '';
-		if ( $this->names || $this->landmarks ) {
+		$in_svg = ! empty( $this->open_tags['SVG'] );
+		$hidden = false;
+		if ( isset( $present['aria-hidden'] ) ) {
+			$aria_hidden = $processor->get_attribute( 'aria-hidden' );
+			$hidden      = is_string( $aria_hidden ) && 'true' === strtolower( trim( $aria_hidden ) );
+		}
+		$barrier = $hidden;
+		$role    = '';
+		if ( isset( $present['role'] ) && ( $this->names || $this->landmarks ) ) {
 			$role = $processor->get_attribute( 'role' );
 			$role = is_string( $role ) ? strtolower( trim( $role ) ) : '';
 		}
 		if ( $this->names && '' !== $id ) {
 			$this->index->set_menu( $id, self::is_menu( $processor, $name, $role ) );
 		}
-		if ( $this->landmarks ) {
+		if ( $this->landmarks && ( '' !== $role || 'MAIN' === $name || 'NAV' === $name ) ) {
 			$this->landmark_facts( $processor, $ordinal, $name, $role, $id, $hidden );
 		}
-		if ( $this->controls ) {
+		if ( $this->controls && isset( $present['aria-controls'] ) ) {
 			$controls = $processor->get_attribute( 'aria-controls' );
 			if ( is_string( $controls ) ) {
 				$this->index->add_controls( $controls );
@@ -825,10 +920,12 @@ class Engine {
 		if ( $this->collecting > 0 && ! $hidden ) {
 			$own_label = '';
 			if ( $this->names ) {
-				$own_label = $processor->get_attribute( 'aria-label' );
-				$own_label = is_string( $own_label ) ? trim( $own_label ) : '';
+				if ( isset( $present['aria-label'] ) ) {
+					$own_label = $processor->get_attribute( 'aria-label' );
+					$own_label = is_string( $own_label ) ? trim( $own_label ) : '';
+				}
 				// Hidden content is not part of the name of the control around it.
-				$barrier = '' === $own_label && null !== $processor->get_attribute( 'hidden' );
+				$barrier = '' === $own_label && isset( $present['hidden'] );
 			}
 			if ( $barrier ) {
 				$own_label = '';
@@ -837,9 +934,11 @@ class Engine {
 				$this->add_text( ' ' . $own_label . ' ' );
 				$barrier = true;
 			} elseif ( 'IMG' === $name ) {
-				$alt = $processor->get_attribute( 'alt' );
-				if ( is_string( $alt ) ) {
-					$this->add_text( ' ' . $alt . ' ' );
+				if ( isset( $present['alt'] ) ) {
+					$alt = $processor->get_attribute( 'alt' );
+					if ( is_string( $alt ) ) {
+						$this->add_text( ' ' . $alt . ' ' );
+					}
 				}
 			} elseif ( 'TITLE' === $name && $in_svg ) {
 				$this->add_text( ' ' . $processor->get_modifiable_text() . ' ' );
@@ -868,10 +967,10 @@ class Engine {
 				}
 			}
 			if ( 'button' === $role || 'link' === $role || isset( self::NAMEABLE[ $name ] ) ) {
-				$accessible = $this->name_facts( $processor, $ordinal, $name, $role, $hidden );
+				$accessible = $this->name_facts( $processor, $ordinal, $name, $role, $hidden, $present );
 			}
 			if ( isset( self::CONTROL_PARTS[ $name ] ) && $this->in_control() ) {
-				$this->count_control_part( $processor, $name );
+				$this->count_control_part( $processor, $name, $present );
 			}
 		}
 
@@ -883,6 +982,18 @@ class Engine {
 		$element   = null;
 		$listeners = isset( $this->listeners[ $name ] ) || ! empty( $this->listen_all ) ? $this->listeners_for( $name ) : array();
 		$checks    = isset( $this->check_listeners[ $name ] ) || ! empty( $this->check_all ) ? $this->checks_for( $name ) : array();
+		foreach ( $this->attribute_listeners as $attribute => $wanting ) {
+			if ( isset( $present[ $attribute ] ) ) {
+				$listeners = self::add_by_attribute( $listeners, $this->attribute_listeners, $present );
+				break;
+			}
+		}
+		foreach ( $this->attribute_checks as $attribute => $wanting ) {
+			if ( isset( $present[ $attribute ] ) ) {
+				$checks = self::add_by_attribute( $checks, $this->attribute_checks, $present );
+				break;
+			}
+		}
 		// Read before this element's own frame is pushed, so hidden_open counts its ancestors only.
 		$in_hidden = ! empty( $this->hidden_listeners ) && ( $hidden || $this->hidden_open > 0 ) ? $this->hidden_for( $name ) : array();
 		$ancestors = $this->stack;
@@ -916,7 +1027,7 @@ class Engine {
 		if ( empty( $listeners ) && empty( $checks ) && empty( $in_hidden ) ) {
 			return;
 		}
-		$this->token->set_opener( $processor, $ordinal, $name, $element, $ancestors );
+		$this->token->set_opener( $processor, $ordinal, $name, $element, $ancestors, $present );
 		if ( null !== $accessible ) {
 			$this->token->set_accessible( $accessible );
 		}
@@ -924,10 +1035,64 @@ class Engine {
 			$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
 		}
 		foreach ( $in_hidden as $fix ) {
-			$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
+			// Each fix sees an opener once, also when an attribute already brought it here.
+			if ( empty( $this->attribute_listeners ) || ! in_array( $fix, $listeners, true ) ) {
+				$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
+			}
 		}
 		foreach ( $checks as $check ) {
 			$check->analyse( $this->token, $this->index, $this->recorder );
+		}
+	}
+
+	/**
+	 * Whether openers of a tag are plain in this run: never tracked, never
+	 * named, never part of a control's facts, and seen by no fix or check by
+	 * their tag. Such an opener without an interesting attribute only counts.
+	 *
+	 * @param string $name Upper-case tag name.
+	 * @return bool
+	 */
+	private function is_plain( string $name ): bool {
+		$plain = ! isset( self::TRACKED[ $name ] )
+			&& ! isset( self::TRACKED_IN_CONTROLS[ $name ] )
+			&& ! isset( self::NAMEABLE[ $name ] )
+			&& ! isset( self::CONTROL_PARTS[ $name ] )
+			&& ! isset( self::HEADINGS[ $name ] )
+			&& ! isset( self::PLAIN_NEVER[ $name ] )
+			&& ! isset( $this->listeners[ $name ] )
+			&& ! isset( $this->check_listeners[ $name ] )
+			&& empty( $this->listen_all )
+			&& empty( $this->check_all );
+
+		$this->plain[ $name ] = $plain;
+		return $plain;
+	}
+
+	/**
+	 * What open_tag() does for a plain opener without an interesting attribute:
+	 * count it, and keep the end tags of nested same-name elements apart.
+	 *
+	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
+	 * @param string                $name      Upper-case tag name.
+	 * @return void
+	 */
+	private function open_plain( WP_HTML_Tag_Processor $processor, string $name ): void {
+		$this->index->add_opener( $name, '' );
+		$depth = count( $this->stack );
+		if ( 0 === $depth ) {
+			return;
+		}
+		if ( 'BR' !== $name && 'WBR' !== $name ) {
+			++$this->stack[ $depth - 1 ]->elements;
+		}
+		if (
+			! empty( $this->open_tags[ $name ] )
+			&& ! isset( self::VOID[ $name ] ) && ! isset( self::RAW[ $name ] )
+			&& ! ( ! empty( $this->open_tags['SVG'] ) && $processor->has_self_closing_flag() )
+		) {
+			// An untracked element with the same name as an open frame: its end tag must not close the frame.
+			++$this->innermost( $name )->nested;
 		}
 	}
 
@@ -940,13 +1105,11 @@ class Engine {
 	 * @param string                $name      Upper-case tag name.
 	 * @param string                $role      Lower-case explicit role, or ''.
 	 * @param bool                  $hidden    Whether the opener carries aria-hidden="true".
+	 * @param array                 $present   Lower-case names of the attributes present, as keys.
 	 * @return Accessible_Name|null
 	 */
-	private function name_facts( WP_HTML_Tag_Processor $processor, int $ordinal, string $name, string $role, bool $hidden ) {
-		// Attribute names first: values are decoded only for the attributes this kind keeps.
-		$present = $processor->get_attribute_names_with_prefix( '' );
-		$present = is_array( $present ) ? array_flip( $present ) : array();
-		$type    = '';
+	private function name_facts( WP_HTML_Tag_Processor $processor, int $ordinal, string $name, string $role, bool $hidden, array $present ) {
+		$type = '';
 		if ( 'INPUT' === $name ) {
 			$type = isset( $present['type'] ) ? $processor->get_attribute( 'type' ) : '';
 			$type = is_string( $type ) && '' !== trim( $type ) ? strtolower( trim( $type ) ) : 'text';
@@ -956,6 +1119,8 @@ class Engine {
 			return null;
 		}
 
+		// Values are decoded only for the attributes this kind keeps. The keys come from the
+		// constant list (shared strings), not from the processor: thousands of records stay small.
 		$attributes = array();
 		foreach ( Accessible_Name::attributes_for( $kind ) as $attribute => $wanted ) {
 			if ( $wanted && isset( $present[ $attribute ] ) ) {
@@ -967,11 +1132,11 @@ class Engine {
 		$accessible            = new Accessible_Name( $ordinal, $name, $role, $kind, $attributes );
 		$accessible->hidden    = $accessible->hidden || $hidden || $this->hidden_open > 0;
 		$accessible->in_hidden = $this->hidden_open > 0;
-		$accessible->label     = $this->innermost_open( 'LABEL' );
-		$accessible->article   = $this->innermost_open( 'ARTICLE' );
-		$accessible->form      = $this->innermost_open( 'FORM' );
-		if ( null === $accessible->form ) {
-			$accessible->form = $this->innermost_open( 'SEARCH' );
+		$accessible->label     = empty( $this->open_tags['LABEL'] ) ? null : $this->innermost( 'LABEL' );
+		$accessible->article   = empty( $this->open_tags['ARTICLE'] ) ? null : $this->innermost( 'ARTICLE' );
+		$accessible->form      = empty( $this->open_tags['FORM'] ) ? null : $this->innermost( 'FORM' );
+		if ( null === $accessible->form && ! empty( $this->open_tags['SEARCH'] ) ) {
+			$accessible->form = $this->innermost( 'SEARCH' );
 		}
 		if ( null !== $accessible->form && ( 'search' === $accessible->type || ( 'INPUT' === $name && 's' === $accessible->attr( 'name' ) ) ) ) {
 			$accessible->form->search = true;
@@ -1036,22 +1201,26 @@ class Engine {
 	 *
 	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
 	 * @param string                $name      Upper-case tag name.
+	 * @param array                 $present   Lower-case names of the attributes present, as keys.
 	 * @return void
 	 */
-	private function count_control_part( WP_HTML_Tag_Processor $processor, string $name ): void {
+	private function count_control_part( WP_HTML_Tag_Processor $processor, string $name, array $present ): void {
 		$control = end( $this->containers );
 		if ( false === $control ) {
 			return;
 		}
 		if ( 'IMG' === $name ) {
 			++$control->images;
-			if ( null === $processor->get_attribute( 'alt' ) ) {
+			if ( ! isset( $present['alt'] ) ) {
 				++$control->images_without_alt;
 			}
 			return;
 		}
 		if ( 'SVG' === $name ) {
 			++$control->svgs;
+		}
+		if ( ! isset( $present['class'] ) ) {
+			return;
 		}
 		$class = $processor->get_attribute( 'class' );
 		if ( ! is_string( $class ) || count( $control->icon_classes ) >= self::ICON_CLASS_LIMIT ) {
@@ -1124,8 +1293,8 @@ class Engine {
 			if ( $this->names ) {
 				$this->closed_for_names( $frame );
 			}
-			$listeners = $this->listeners_for( $frame->tag );
-			$checks    = $this->checks_for( $frame->tag );
+			$listeners = isset( $this->dispatch['fixes'][ $frame->tag ] ) ? $this->dispatch['fixes'][ $frame->tag ] : $this->listeners_for( $frame->tag );
+			$checks    = isset( $this->dispatch['checks'][ $frame->tag ] ) ? $this->dispatch['checks'][ $frame->tag ] : $this->checks_for( $frame->tag );
 			if ( empty( $listeners ) && empty( $checks ) ) {
 				continue;
 			}
@@ -1239,6 +1408,28 @@ class Engine {
 	}
 
 	/**
+	 * Adds the listeners of the attributes an opener carries, each listener once.
+	 *
+	 * @param array $listeners  Fixes or checks that already see the opener.
+	 * @param array $by_name    Lower-case attribute name => fixes or checks.
+	 * @param array $present    Lower-case names of the attributes present, as keys.
+	 * @return array
+	 */
+	private static function add_by_attribute( array $listeners, array $by_name, array $present ): array {
+		foreach ( $by_name as $attribute => $wanting ) {
+			if ( ! isset( $present[ $attribute ] ) ) {
+				continue;
+			}
+			foreach ( $wanting as $listener ) {
+				if ( ! in_array( $listener, $listeners, true ) ) {
+					$listeners[] = $listener;
+				}
+			}
+		}
+		return $listeners;
+	}
+
+	/**
 	 * Fixes that see a tag in aria-hidden content and do not already see it by its name.
 	 *
 	 * @param string $name Upper-case tag name.
@@ -1348,7 +1539,9 @@ class Engine {
 				$this->recorder->fallback( 'time' );
 				return null;
 			}
-			if ( ! self::is_opener( $processor, $processor->get_token_type() ) ) {
+			// Text, comments and other non-tag tokens are never openers; the shared predicate decides for tags.
+			$type = $processor->get_token_type();
+			if ( '#tag' !== $type || ! self::is_opener( $processor, $type ) ) {
 				continue;
 			}
 			++$ordinal;

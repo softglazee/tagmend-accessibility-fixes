@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Shows one report (blueprint sections 10.2 and 12): what it covers, the
- * changes by fix, what needs a person (R02-R13) and what the plugin does not
+ * changes by fix, what needs a person (R01-R13) and what the plugin does not
  * check (R14). Each fix can be moved to Live, or skipped on this page when
  * the page is a single post; both go through admin-post.php with the
  * capability checked first, then the nonce. Every stored value is printed
@@ -494,7 +494,7 @@ final class Screen_Report_Details {
 	}
 
 	/**
-	 * Needs a person: findings grouped by check (R02-R13).
+	 * Needs a person: findings grouped by check (R01-R13).
 	 *
 	 * @param array $result Stored result.
 	 * @return void
@@ -601,7 +601,7 @@ final class Screen_Report_Details {
 	 */
 	private function render_not_checked(): void {
 		$items = array(
-			__( 'Text contrast: it needs a check in the browser.', 'tagmend-accessibility-fixes' ),
+			__( 'Text contrast, except where an element sets both its text and background colour itself: it needs a check in the browser.', 'tagmend-accessibility-fixes' ),
 			__( 'Keyboard traps and the focus order of widgets.', 'tagmend-accessibility-fixes' ),
 			__( 'Captions and audio description.', 'tagmend-accessibility-fixes' ),
 			__( 'Reflow and zoom behaviour.', 'tagmend-accessibility-fixes' ),

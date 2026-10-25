@@ -44,7 +44,8 @@ abstract class Check_Base {
 
 	/**
 	 * Upper-case tag names whose openers (and tracked closers) this check sees.
-	 * An empty array means every opener; array( Fix_Base::FINISH_ONLY ) means none.
+	 * An empty array means every opener; array( Fix_Base::FINISH_ONLY ) means none;
+	 * an entry starting with Fix_Base::WITH_ATTRIBUTE adds the openers carrying that attribute.
 	 *
 	 * @return string[]
 	 */

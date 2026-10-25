@@ -71,6 +71,15 @@ final class Token {
 	private $accessible = null;
 
 	/**
+	 * Lower-case names of the opener's attributes as keys, when the engine
+	 * read them already; null when unknown. Lets attr() answer for absent
+	 * attributes without asking the processor.
+	 *
+	 * @var array|null
+	 */
+	private $present = null;
+
+	/**
 	 * Points the token at an opener.
 	 *
 	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
@@ -78,9 +87,10 @@ final class Token {
 	 * @param string                $name      Upper-case tag name.
 	 * @param Element|null          $element   Frame when the element is tracked.
 	 * @param Element[]             $ancestors Open tracked elements.
+	 * @param array|null            $present   Lower-case attribute names of the opener as keys, or null when not read.
 	 * @return void
 	 */
-	public function set_opener( WP_HTML_Tag_Processor $processor, int $ordinal, string $name, $element, array $ancestors ): void {
+	public function set_opener( WP_HTML_Tag_Processor $processor, int $ordinal, string $name, $element, array $ancestors, $present = null ): void {
 		$this->processor  = $processor;
 		$this->ordinal    = $ordinal;
 		$this->name       = $name;
@@ -88,6 +98,7 @@ final class Token {
 		$this->element    = $element;
 		$this->ancestors  = $ancestors;
 		$this->accessible = null;
+		$this->present    = $present;
 	}
 
 	/**
@@ -108,6 +119,7 @@ final class Token {
 	 * @return void
 	 */
 	public function set_closer( Element $element, array $ancestors ): void {
+		$this->present    = null;
 		$this->processor  = null;
 		$this->ordinal    = $element->ordinal;
 		$this->name       = $element->tag;
@@ -123,6 +135,7 @@ final class Token {
 	 * @return void
 	 */
 	public function clear(): void {
+		$this->present    = null;
 		$this->processor  = null;
 		$this->element    = null;
 		$this->ancestors  = array();
@@ -136,7 +149,7 @@ final class Token {
 	 * @return string|true|null
 	 */
 	public function attr( string $name ) {
-		if ( null === $this->processor ) {
+		if ( null === $this->processor || ( null !== $this->present && ! isset( $this->present[ strtolower( $name ) ] ) ) ) {
 			return null;
 		}
 		return $this->processor->get_attribute( $name );

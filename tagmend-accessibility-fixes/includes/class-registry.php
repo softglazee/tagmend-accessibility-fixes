@@ -115,6 +115,7 @@ final class Registry {
 		if ( null === $this->checks ) {
 			// R05 is recorded by the fixes that run out of label sources (F05, F06, F07, F08); F11 adds its own R08 finding, F20 its own R02.
 			$this->checks = array(
+				new Checks\Check_Contrast(),
 				new Checks\Check_Headings(),
 				new Checks\Check_Alt_Quality(),
 				new Checks\Check_Undescribed_Images(),

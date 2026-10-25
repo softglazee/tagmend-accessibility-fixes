@@ -9,6 +9,7 @@ namespace SoftGlaze\AccessibilityRepair\Checks;
 
 use SoftGlaze\AccessibilityRepair\Check_Base;
 use SoftGlaze\AccessibilityRepair\Document_Index;
+use SoftGlaze\AccessibilityRepair\Fix_Base;
 use SoftGlaze\AccessibilityRepair\Recorder;
 use SoftGlaze\AccessibilityRepair\Token;
 
@@ -98,12 +99,12 @@ final class Check_Non_Native_Controls extends Check_Base {
 	}
 
 	/**
-	 * Every opener.
+	 * Every opener that carries a role or a click handler (both can be on any element).
 	 *
 	 * @return string[]
 	 */
 	public function tags(): array {
-		return array();
+		return array( Fix_Base::WITH_ATTRIBUTE . 'role', Fix_Base::WITH_ATTRIBUTE . 'onclick' );
 	}
 
 	/**
