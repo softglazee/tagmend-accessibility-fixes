@@ -186,17 +186,58 @@ abstract class Fix_Base implements Fix {
 	}
 
 	/**
+	 * Lower-case text. WordPress polyfills only mb_substr() and mb_strlen(),
+	 * so without the mbstring extension only ASCII letters are lowered; every
+	 * caller lowers both sides of a comparison the same way.
+	 *
+	 * @param string $text UTF-8 text.
+	 * @return string
+	 */
+	public static function lower( string $text ): string {
+		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $text, 'UTF-8' ) : strtolower( $text );
+	}
+
+	/**
+	 * Whether a text contains another, ignoring case (UTF-8 aware without mbstring).
+	 *
+	 * @param string $haystack Text searched.
+	 * @param string $needle   Text looked for; '' never matches.
+	 * @return bool
+	 */
+	public static function contains_text( string $haystack, string $needle ): bool {
+		return '' !== $needle && 1 === preg_match( '/' . preg_quote( $needle, '/' ) . '/iu', $haystack );
+	}
+
+	/**
+	 * A text with the first occurrence of another removed, ignoring case
+	 * (UTF-8 aware without mbstring).
+	 *
+	 * @param string $haystack Text.
+	 * @param string $needle   Text to remove once.
+	 * @return string
+	 */
+	public static function without_first( string $haystack, string $needle ): string {
+		if ( '' === $needle ) {
+			return $haystack;
+		}
+		$result = preg_replace( '/' . preg_quote( $needle, '/' ) . '/iu', '', $haystack, 1 );
+		return is_string( $result ) ? $result : $haystack;
+	}
+
+	/**
 	 * Turns text from a trusted source into plain text for set_attribute():
-	 * character references resolved, tags stripped, whitespace collapsed,
-	 * trimmed and capped. Never pass esc_attr() output here or onward:
-	 * set_attribute() encodes the value itself.
+	 * tags stripped from the raw text first, then character references
+	 * resolved, whitespace collapsed, trimmed and capped. Stripping first keeps
+	 * an encoded "&lt;" as text ("Kids 3&lt;6 years" stays "Kids 3<6 years")
+	 * instead of turning it into a tag that would be stripped. Never pass
+	 * esc_attr() output here or onward: set_attribute() encodes the value itself.
 	 *
 	 * @param string $raw Raw text (may contain entities or markup).
 	 * @param int    $max Maximum characters.
 	 * @return string
 	 */
 	public static function plain_text( string $raw, int $max = self::MAX_TEXT ): string {
-		$text = $raw;
+		$text = wp_strip_all_tags( $raw );
 		// Resolve references until none are left, so a doubly encoded "&amp;amp;" reads as "&".
 		for ( $round = 0; $round < 3; $round++ ) {
 			$decoded = html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
@@ -205,7 +246,6 @@ abstract class Fix_Base implements Fix {
 			}
 			$text = $decoded;
 		}
-		$text = wp_strip_all_tags( $text );
 		$text = (string) preg_replace( '/[\s\x{00A0}]+/u', ' ', $text );
 		$text = trim( $text );
 		if ( mb_strlen( $text ) > $max ) {

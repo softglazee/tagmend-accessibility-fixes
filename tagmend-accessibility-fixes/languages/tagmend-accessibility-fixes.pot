@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-25T15:40:06+00:00\n"
+"POT-Creation-Date: 2026-10-25T17:27:59+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: tagmend-accessibility-fixes\n"
@@ -18,8 +18,8 @@ msgstr ""
 #: tagmend-accessibility-fixes.php
 #: includes/admin/class-screen-overview.php:129
 #: includes/class-install.php:74
-#: includes/class-plugin.php:311
-#: includes/class-plugin.php:320
+#: includes/class-plugin.php:312
+#: includes/class-plugin.php:321
 #: includes/class-privacy.php:38
 msgid "Tagmend – Accessibility Fixes"
 msgstr ""
@@ -39,31 +39,31 @@ msgstr ""
 msgid "https://softglaze.com"
 msgstr ""
 
-#: includes/admin/class-admin-bar.php:92
+#: includes/admin/class-admin-bar.php:112
 msgid "Tagmend"
 msgstr ""
 
-#: includes/admin/class-admin-bar.php:93
-#: includes/admin/class-pages-list-table.php:234
+#: includes/admin/class-admin-bar.php:113
+#: includes/admin/class-pages-list-table.php:238
 #: includes/admin/class-screen-report-details.php:318
 msgid "View original"
 msgstr ""
 
-#: includes/admin/class-admin-bar.php:94
+#: includes/admin/class-admin-bar.php:114
 #: includes/admin/class-screen-report-details.php:319
 msgid "View repaired (Live + Preview)"
 msgstr ""
 
-#: includes/admin/class-admin-bar.php:95
+#: includes/admin/class-admin-bar.php:115
 msgid "Scan this page"
 msgstr ""
 
-#: includes/admin/class-admin-bar.php:97
+#: includes/admin/class-admin-bar.php:117
 msgid "Changes on this page (not scanned yet)"
 msgstr ""
 
 #. translators: %s: number of Live and Preview changes in the last report of this page
-#: includes/admin/class-admin-bar.php:102
+#: includes/admin/class-admin-bar.php:122
 #, php-format
 msgid "Changes on this page (%s)"
 msgstr ""
@@ -122,19 +122,27 @@ msgstr ""
 msgid "Detail"
 msgstr ""
 
-#: includes/admin/class-log-list-table.php:151
+#: includes/admin/class-log-list-table.php:90
+msgid "Table ordered by Date."
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:91
+msgid "Table ordered by Event."
+msgstr ""
+
+#: includes/admin/class-log-list-table.php:155
 msgid "No entries yet."
 msgstr ""
 
-#: includes/admin/class-log-list-table.php:167
+#: includes/admin/class-log-list-table.php:171
 msgid "Show entries of"
 msgstr ""
 
-#: includes/admin/class-log-list-table.php:169
+#: includes/admin/class-log-list-table.php:173
 msgid "All events"
 msgstr ""
 
-#: includes/admin/class-log-list-table.php:174
+#: includes/admin/class-log-list-table.php:178
 msgid "Filter"
 msgstr ""
 
@@ -168,43 +176,62 @@ msgstr ""
 msgid "Changed since scan"
 msgstr ""
 
-#: includes/admin/class-pages-list-table.php:159
+#: includes/admin/class-pages-list-table.php:86
+msgid "Table ordered by Page."
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:87
+msgid "Table ordered by Last scanned."
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:88
+msgid "Table ordered by Live changes."
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:89
+msgid "Table ordered by Needs a person."
+msgstr ""
+
+#: includes/admin/class-pages-list-table.php:163
 msgid "No reports yet. Scan your home page above, or open a page and use \"Scan this page\" in the admin bar."
 msgstr ""
 
 #. translators: 1: number of changes of fixes in Preview, 2: number of changes fixes that are Off would make
-#: includes/admin/class-pages-list-table.php:195
+#: includes/admin/class-pages-list-table.php:199
 #: includes/admin/class-screen-report-details.php:283
 #, php-format
 msgid "%1$s Preview, %2$s Off"
 msgstr ""
 
-#: includes/admin/class-pages-list-table.php:205
+#: includes/admin/class-pages-list-table.php:209
 msgid "Changed since last scan"
 msgstr ""
 
-#: includes/admin/class-pages-list-table.php:208
+#: includes/admin/class-pages-list-table.php:212
 msgid "No"
 msgstr ""
 
-#: includes/admin/class-pages-list-table.php:210
+#: includes/admin/class-pages-list-table.php:214
 msgid "Not known"
 msgstr ""
 
-#: includes/admin/class-pages-list-table.php:240
+#: includes/admin/class-pages-list-table.php:244
 #: includes/admin/class-report-view.php:40
 msgid "View repaired"
 msgstr ""
 
-#: includes/admin/class-pages-list-table.php:246
+#: includes/admin/class-pages-list-table.php:250
 msgid "Details"
 msgstr ""
 
-#: includes/admin/class-pages-list-table.php:253
+#: includes/admin/class-pages-list-table.php:257
 msgid "Rescan"
 msgstr ""
 
-#: includes/admin/class-pages-list-table.php:259
+#: includes/admin/class-pages-list-table.php:263
+#: includes/admin/class-screen-reports.php:133
+#: includes/admin/class-screen-reports.php:408
+#: includes/admin/class-screen-reports.php:420
 msgid "Delete report"
 msgstr ""
 
@@ -218,12 +245,12 @@ msgid "WP-CLI"
 msgstr ""
 
 #: includes/admin/class-report-view.php:44
-#: includes/admin/class-screen-fixes.php:823
+#: includes/admin/class-screen-fixes.php:825
 msgid "Unknown"
 msgstr ""
 
 #: includes/admin/class-report-view.php:57
-#: includes/admin/class-screen-fixes.php:398
+#: includes/admin/class-screen-fixes.php:400
 #: includes/admin/class-screen-log.php:394
 #: includes/admin/class-screen-overview.php:213
 #: includes/admin/class-screen-report-details.php:424
@@ -231,7 +258,7 @@ msgid "Live"
 msgstr ""
 
 #: includes/admin/class-report-view.php:59
-#: includes/admin/class-screen-fixes.php:397
+#: includes/admin/class-screen-fixes.php:399
 #: includes/admin/class-screen-log.php:396
 #: includes/admin/class-screen-overview.php:214
 #: includes/admin/class-screen-report-details.php:424
@@ -345,7 +372,7 @@ msgstr ""
 
 #: includes/admin/class-screen-fixes.php:173
 #: includes/admin/class-screen-fixes.php:323
-#: includes/admin/class-screen-fixes.php:530
+#: includes/admin/class-screen-fixes.php:532
 msgid "Move all Preview fixes to Live"
 msgstr ""
 
@@ -389,11 +416,12 @@ msgstr[1] ""
 msgid "Review the Preview fixes"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:364
+#: includes/admin/class-screen-fixes.php:352
+#: includes/admin/class-screen-fixes.php:366
 msgid "Save fix states"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:396
+#: includes/admin/class-screen-fixes.php:398
 #: includes/admin/class-screen-log.php:398
 #: includes/admin/class-screen-overview.php:215
 #: includes/admin/class-screen-report-details.php:424
@@ -401,46 +429,46 @@ msgid "Off"
 msgstr ""
 
 #. translators: %s: risk level, for example Low
-#: includes/admin/class-screen-fixes.php:427
+#: includes/admin/class-screen-fixes.php:429
 #, php-format
 msgid "Risk: %s."
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:433
+#: includes/admin/class-screen-fixes.php:435
 msgid "Recommended: starts in Preview after activation."
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:433
+#: includes/admin/class-screen-fixes.php:435
 msgid "Starts Off after activation."
 msgstr ""
 
 #. translators: %s: success criterion number and name, for example 4.1.2 Name, Role, Value
-#: includes/admin/class-screen-fixes.php:453
+#: includes/admin/class-screen-fixes.php:455
 #, php-format
 msgid "WCAG %s."
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:463
+#: includes/admin/class-screen-fixes.php:465
 #: includes/fixes/class-fix-read-more-context.php:224
 msgid "Learn more"
 msgstr ""
 
 #. translators: %s: success criterion number and name, for example 4.1.2 Name, Role, Value
-#: includes/admin/class-screen-fixes.php:467
+#: includes/admin/class-screen-fixes.php:469
 #, php-format
 msgid "about %s on the W3C website"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:484
+#: includes/admin/class-screen-fixes.php:486
 msgid "Scan reports do not list this fix: it works through WordPress hooks while a page is built. Open a page with \"View repaired\" to see its changes."
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:488
+#: includes/admin/class-screen-fixes.php:490
 msgid "No page has been scanned yet."
 msgstr ""
 
 #. translators: %s: number of scanned pages
-#: includes/admin/class-screen-fixes.php:495
+#: includes/admin/class-screen-fixes.php:497
 #, php-format
 msgid "No changes on the %s scanned page."
 msgid_plural "No changes on the %s scanned pages."
@@ -448,7 +476,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of changed elements, 2: number of pages with changes, 3: number of scanned pages
-#: includes/admin/class-screen-fixes.php:502
+#: includes/admin/class-screen-fixes.php:504
 #, php-format
 msgid "Changes %1$s element on %2$s of the %3$s scanned pages."
 msgid_plural "Changes %1$s elements on %2$s of the %3$s scanned pages."
@@ -456,146 +484,147 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of elements, 2: number of pages with changes, 3: number of scanned pages
-#: includes/admin/class-screen-fixes.php:510
+#: includes/admin/class-screen-fixes.php:512
 #, php-format
 msgid "Would change %1$s element on %2$s of the %3$s scanned pages."
 msgid_plural "Would change %1$s elements on %2$s of the %3$s scanned pages."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/class-screen-fixes.php:529
+#: includes/admin/class-screen-fixes.php:531
 msgid "Back to Fixes"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:532
+#: includes/admin/class-screen-fixes.php:534
 msgid "No fix that can run on this site is in Preview, so there is nothing to move."
 msgstr ""
 
 #. translators: %s: number of fixes
-#: includes/admin/class-screen-fixes.php:539
+#: includes/admin/class-screen-fixes.php:541
 #, php-format
 msgid "%s fix is in Preview. After you confirm, it is Live and every visitor gets its changes:"
 msgid_plural "These %s fixes are in Preview. After you confirm, they are Live and every visitor gets their changes:"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/class-screen-fixes.php:557
+#: includes/admin/class-screen-fixes.php:559
 msgid "These stay in Preview because they cannot run on this site:"
 msgstr ""
 
 #. translators: %s: number of fixes
-#: includes/admin/class-screen-fixes.php:577
+#: includes/admin/class-screen-fixes.php:579
 #, php-format
 msgid "Move %s fix to Live"
 msgid_plural "Move these %s fixes to Live"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/class-screen-fixes.php:583
+#: includes/admin/class-screen-fixes.php:585
+#: includes/admin/class-screen-reports.php:421
 msgid "Cancel"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:660
+#: includes/admin/class-screen-fixes.php:662
 msgid "Images"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:662
+#: includes/admin/class-screen-fixes.php:664
 msgid "Links and buttons"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:664
+#: includes/admin/class-screen-fixes.php:666
 msgid "Forms"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:666
+#: includes/admin/class-screen-fixes.php:668
 msgid "Page structure"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:668
+#: includes/admin/class-screen-fixes.php:670
 msgid "Keyboard"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:670
+#: includes/admin/class-screen-fixes.php:672
 msgid "Embeds and media"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:672
+#: includes/admin/class-screen-fixes.php:674
 msgid "Other fixes"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:684
+#: includes/admin/class-screen-fixes.php:686
 msgid "Non-text Content"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:685
+#: includes/admin/class-screen-fixes.php:687
 msgid "Info and Relationships"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:686
+#: includes/admin/class-screen-fixes.php:688
 msgid "Resize Text"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:687
+#: includes/admin/class-screen-fixes.php:689
 msgid "Bypass Blocks"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:688
+#: includes/admin/class-screen-fixes.php:690
 msgid "Focus Order"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:689
+#: includes/admin/class-screen-fixes.php:691
 msgid "Link Purpose (In Context)"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:690
+#: includes/admin/class-screen-fixes.php:692
 msgid "Headings and Labels"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:691
+#: includes/admin/class-screen-fixes.php:693
 msgid "Focus Visible"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:692
+#: includes/admin/class-screen-fixes.php:694
 msgid "Language of Page"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:693
+#: includes/admin/class-screen-fixes.php:695
 msgid "Change on Request"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:694
+#: includes/admin/class-screen-fixes.php:696
 msgid "Name, Role, Value"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:714
+#: includes/admin/class-screen-fixes.php:716
 msgid "Some fix states could not be saved and kept their previous value."
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:719
+#: includes/admin/class-screen-fixes.php:721
 msgid "No fix was moved: none of the listed fixes was still in Preview."
 msgstr ""
 
 #. translators: %s: number of fixes
-#: includes/admin/class-screen-fixes.php:722
+#: includes/admin/class-screen-fixes.php:724
 #, php-format
 msgid "%s fix moved to Live: visitors get its changes now."
 msgid_plural "%s fixes moved to Live: visitors get their changes now."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/class-screen-fixes.php:727
+#: includes/admin/class-screen-fixes.php:729
 msgid "Fix states saved."
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:817
+#: includes/admin/class-screen-fixes.php:819
 msgid "Low"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:819
+#: includes/admin/class-screen-fixes.php:821
 msgid "Medium"
 msgstr ""
 
-#: includes/admin/class-screen-fixes.php:821
+#: includes/admin/class-screen-fixes.php:823
 msgid "High"
 msgstr ""
 
@@ -901,11 +930,12 @@ msgid "Sorry, you are not allowed to change where fixes run."
 msgstr ""
 
 #: includes/admin/class-screen-report-details.php:225
+#: includes/admin/class-screen-reports.php:407
 msgid "Back to Reports"
 msgstr ""
 
 #: includes/admin/class-screen-report-details.php:226
-#: includes/admin/class-screen-reports.php:127
+#: includes/admin/class-screen-reports.php:133
 msgid "Report details"
 msgstr ""
 
@@ -1104,85 +1134,100 @@ msgstr ""
 msgid "Not checked by this plugin"
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:91
-#: includes/admin/class-screen-reports.php:92
-#: includes/admin/class-screen-reports.php:312
+#: includes/admin/class-screen-reports.php:97
+#: includes/admin/class-screen-reports.php:98
+#: includes/admin/class-screen-reports.php:335
 msgid "Reports"
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:210
+#: includes/admin/class-screen-reports.php:229
 msgid "Sorry, you are not allowed to delete reports."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:221
+#: includes/admin/class-screen-reports.php:240
 msgid "This link has expired. Open the Reports screen again and try once more."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:314
+#: includes/admin/class-screen-reports.php:337
 msgid "Each report lists what the fixes change on one page and what still needs a person. A scan runs in your own browser, changes nothing on the page, and sees the page as a logged-in administrator."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:317
+#: includes/admin/class-screen-reports.php:340
 msgid "Scan pages"
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:318
+#: includes/admin/class-screen-reports.php:341
 msgid "Scanning from this screen needs JavaScript. You can also open any page of your site and use \"Scan this page\" in the admin bar."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:321
+#: includes/admin/class-screen-reports.php:344
 msgid "Scan suggested pages"
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:322
+#: includes/admin/class-screen-reports.php:345
 msgid "Scan home page"
 msgstr ""
 
 #. translators: %s: number of pages
-#: includes/admin/class-screen-reports.php:329
+#: includes/admin/class-screen-reports.php:352
 #, php-format
 msgid "%s page: the home page, the five latest posts and pages, and with WooCommerce the shop, one product, the cart and the account page."
 msgid_plural "%s pages: the home page, the five latest posts and pages, and with WooCommerce the shop, one product, the cart and the account page."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/admin/class-screen-reports.php:341
+#: includes/admin/class-screen-reports.php:364
 msgid "Address of a page on this site"
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:344
+#. translators: %s: example address (the home page of this site)
+#: includes/admin/class-screen-reports.php:370
+#, php-format
+msgid "The full address of a page on this site, for example: %s"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:378
 msgid "Scan this address"
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:352
+#: includes/admin/class-screen-reports.php:387
 msgid "Scanned pages"
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:369
-msgid "Report deleted."
-msgstr ""
-
-#: includes/admin/class-screen-reports.php:370
+#: includes/admin/class-screen-reports.php:410
+#: includes/admin/class-screen-reports.php:438
 msgid "That report no longer exists."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:371
+#: includes/admin/class-screen-reports.php:412
+msgid "This deletes the stored report of this page:"
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:414
+msgid "The page itself does not change, and you can scan it again at any time."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:437
+msgid "Report deleted."
+msgstr ""
+
+#: includes/admin/class-screen-reports.php:439
 msgid "The fix is Live now: visitors get its changes."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:372
+#: includes/admin/class-screen-reports.php:440
 msgid "The fix could not be moved to Live on this site."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:373
+#: includes/admin/class-screen-reports.php:441
 msgid "The fix is skipped on this page now."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:374
+#: includes/admin/class-screen-reports.php:442
 msgid "The fix runs on this page again."
 msgstr ""
 
-#: includes/admin/class-screen-reports.php:375
+#: includes/admin/class-screen-reports.php:443
 msgid "Fixes can be skipped only on single posts and pages."
 msgstr ""
 
@@ -1306,11 +1351,11 @@ msgstr ""
 msgid "Alt text is %d characters long; keep it under 150 and put longer descriptions in the page."
 msgstr ""
 
-#: includes/checks/class-check-alt-quality.php:209
+#: includes/checks/class-check-alt-quality.php:206
 msgid "Alt text repeats the link or button text, so it is read twice."
 msgstr ""
 
-#: includes/checks/class-check-alt-quality.php:213
+#: includes/checks/class-check-alt-quality.php:210
 msgid "Alt text repeats the caption, so it is read twice."
 msgstr ""
 
@@ -1442,15 +1487,15 @@ msgstr ""
 msgid "No alt text, and the image was not found in the Media Library: add alt text where the image is inserted."
 msgstr ""
 
-#: includes/class-install.php:92
+#: includes/class-install.php:114
 msgid "Tagmend – Accessibility Fixes works on each site of a network separately, so it cannot be activated for the whole network. Activate it from the Plugins screen of each site where you want it."
 msgstr ""
 
-#: includes/class-plugin.php:312
+#: includes/class-plugin.php:313
 msgid "Accessibility Fixes"
 msgstr ""
 
-#: includes/class-plugin.php:321
+#: includes/class-plugin.php:322
 msgid "Overview"
 msgstr ""
 
@@ -1526,30 +1571,30 @@ msgid "Names for empty buttons"
 msgstr ""
 
 #: includes/fixes/class-fix-button-name.php:74
-msgid "Names buttons that have no text, such as search, menu, close and icon buttons, with an aria-label, and gives empty Submit buttons a value. Buttons it cannot name are listed in the report."
+msgid "Names buttons that have no text, such as search, menu, close and icon buttons, with an aria-label, and gives an empty Submit button a value, or an aria-label when the button has a name (its value is sent with the form). Buttons it cannot name are listed in the report."
 msgstr ""
 
-#: includes/fixes/class-fix-button-name.php:187
+#: includes/fixes/class-fix-button-name.php:189
 msgid "Submit"
 msgstr ""
 
-#: includes/fixes/class-fix-button-name.php:195
+#: includes/fixes/class-fix-button-name.php:197
 msgid "Button has no text, and no label source fits: add visible text or an aria-label."
 msgstr ""
 
-#: includes/fixes/class-fix-button-name.php:209
+#: includes/fixes/class-fix-button-name.php:211
 #: includes/fixes/class-fix-field-label.php:209
 #: includes/fixes/class-fix-link-name.php:307
 msgid "Search"
 msgstr ""
 
-#: includes/fixes/class-fix-button-name.php:213
-#: includes/fixes/class-fix-button-name.php:219
+#: includes/fixes/class-fix-button-name.php:215
+#: includes/fixes/class-fix-button-name.php:221
 #: includes/fixes/class-fix-link-name.php:310
 msgid "Menu"
 msgstr ""
 
-#: includes/fixes/class-fix-button-name.php:224
+#: includes/fixes/class-fix-button-name.php:226
 #: includes/fixes/class-fix-link-name.php:311
 msgid "Close"
 msgstr ""
@@ -1562,7 +1607,7 @@ msgstr ""
 msgid "Hides icon-font glyphs and unlabelled SVG images inside links and buttons that already have a name (aria-hidden=\"true\"), so screen readers do not read them as stray characters."
 msgstr ""
 
-#: includes/fixes/class-fix-decorative-icons.php:359
+#: includes/fixes/class-fix-decorative-icons.php:364
 msgid "SVG image with role=\"img\" has no name: add a title element or an aria-label."
 msgstr ""
 
@@ -1579,7 +1624,7 @@ msgid "Hide empty headings"
 msgstr ""
 
 #: includes/fixes/class-fix-empty-heading.php:75
-msgid "Hides headings that have no text from screen readers. A heading whose removal would leave a gap in the heading levels stays and is listed in the report."
+msgid "Hides empty headings (headings with no text) from screen readers. A heading whose removal would leave a gap in the heading levels stays and is listed in the report."
 msgstr ""
 
 #. translators: 1: level of the empty heading, for example 2; 2: level of the next heading, for example 3
@@ -1705,7 +1750,7 @@ msgid "Empty image alt text from the Media Library"
 msgstr ""
 
 #: includes/fixes/class-fix-img-alt-empty-library.php:60
-msgid "Replaces an empty alt attribute (alt=\"\") with the alt text saved in the Media Library. Starts Off: the block editor writes alt=\"\" for images whose alt text was left empty when they were inserted, which is also how an author marks an image as decorative, so this fix can undo a deliberate choice. Check what it would change in a report before you turn it on."
+msgid "Replaces an empty alt attribute (alt=\"\") with the alt text saved in the Media Library. Starts Off: the block editor writes alt=\"\" for images whose alt text was left empty when they were inserted, which is also how an author marks an image as decorative, so this fix can undo a deliberate choice. Check what it would change in a report before you turn it on. An image the page names only by its address, without the image id the editor adds, is repaired once a scan or \"View repaired\" has looked it up."
 msgstr ""
 
 #: includes/fixes/class-fix-img-alt-library.php:50
@@ -1713,7 +1758,7 @@ msgid "Missing image alt text from the Media Library"
 msgstr ""
 
 #: includes/fixes/class-fix-img-alt-library.php:59
-msgid "Gives images that have no alt attribute the alt text saved for them in the Media Library. Images whose Media Library alt text is empty are listed in the report instead."
+msgid "Gives images that have no alt attribute the alt text saved for them in the Media Library. Images whose Media Library alt text is empty are listed in the report instead. An image the page names only by its address, without the image id the editor adds, is repaired once a scan or \"View repaired\" has looked it up."
 msgstr ""
 
 #: includes/fixes/class-fix-img-in-named-control.php:49
@@ -1861,76 +1906,90 @@ msgstr ""
 msgid "Removes user-scalable=no and a maximum-scale below 2 from the viewport tag, so visitors can zoom the page on phones and tablets."
 msgstr ""
 
-#: assets/js/admin.js:129
+#: assets/js/admin.js:179
 msgid "the site did not answer."
 msgstr ""
 
 #. translators: 1: Live changes, 2: Preview changes, 3: changes of fixes that are Off, 4: items that need a person
-#: assets/js/admin.js:158
+#: assets/js/admin.js:210
 #, js-format
 msgid "%1$d Live, %2$d Preview, %3$d Off (would change), %4$d need a person."
 msgstr ""
 
-#: assets/js/admin.js:166
+#: assets/js/admin.js:218
 msgid "Content only: page-level checks need WordPress 6.9 or later."
 msgstr ""
 
-#: assets/js/admin.js:167
+#: assets/js/admin.js:219
 msgid "Content only: post content, template parts, widgets and menus."
 msgstr ""
 
-#: assets/js/admin.js:181
+#: assets/js/admin.js:233
 msgid "Not scanned (excluded path)."
 msgstr ""
 
-#: assets/js/admin.js:191
+#: assets/js/admin.js:243
 msgid "Not scanned: the page could not be loaded."
 msgstr ""
 
-#: assets/js/admin.js:194
+#: assets/js/admin.js:246
 msgid "This page redirects; open it and use \"Scan this page\" in the admin bar."
 msgstr ""
 
 #. translators: %d: HTTP status code, for example 404
-#: assets/js/admin.js:205
+#: assets/js/admin.js:257
 #, js-format
 msgid "Not scanned: the page answered with HTTP status %d."
 msgstr ""
 
-#: assets/js/admin.js:215
+#: assets/js/admin.js:267
 msgid "Not scanned: no report was stored for this page."
 msgstr ""
 
-#: assets/js/admin.js:234
+#: assets/js/admin.js:282
+msgid "A scan is already running."
+msgstr ""
+
+#: assets/js/admin.js:289
 msgid "There is no page to scan."
 msgstr ""
 
 #. translators: %s: reason, for example "Only pages on this site can be scanned."
-#: assets/js/admin.js:251
+#: assets/js/admin.js:306
 #, js-format
 msgid "The scan could not start: %s"
 msgstr ""
 
 #. translators: %d: number of pages
-#: assets/js/admin.js:258
+#: assets/js/admin.js:318
 #, js-format
 msgid "Scanning %d page. This can take a moment."
 msgid_plural "Scanning %d pages. This can take a moment."
 msgstr[0] ""
 msgstr[1] ""
 
-#. translators: 1: page number, 2: number of pages, 3: page address, 4: result
-#: assets/js/admin.js:272
+#. translators: 1: pages scanned so far, 2: pages in this scan
+#: assets/js/admin.js:333
 #, js-format
-msgid "Page %1$d of %2$d, %3$s: %4$s"
+msgid "Scanned %1$d of %2$d."
+msgstr ""
+
+#. translators: %s: result of the page, for example "2 Live, 0 Preview, 1 Off (would change), 3 need a person."
+#: assets/js/admin.js:342
+#, js-format
+msgid "Scan finished: %s"
 msgstr ""
 
 #. translators: 1: pages scanned, 2: pages sent for scanning
-#: assets/js/admin.js:287
+#: assets/js/admin.js:345
 #, js-format
-msgid "Scan finished: %1$d of %2$d pages scanned. Reload the screen to see the updated reports."
+msgid "Scan finished: %1$d of %2$d pages scanned. The result of each page is listed below."
 msgstr ""
 
-#: assets/js/admin.js:307
+#: assets/js/admin.js:349
+msgid "Reload the screen to see the updated reports."
+msgstr ""
+
+#: assets/js/admin.js:366
 msgid "Reload to see the updated reports"
 msgstr ""

@@ -78,13 +78,17 @@ final class Log_List_Table extends \WP_List_Table {
 
 	/**
 	 * Sortable columns: the request key is one of Log_Store::SORT_COLUMNS.
+	 * Five-element arrays (WordPress 6.3+): core marks the column the list is
+	 * first sorted by (newest first) with aria-sort and prints a caption that
+	 * says how the table is ordered; it prints that text as given, so it is
+	 * escaped here.
 	 *
 	 * @return array
 	 */
 	protected function get_sortable_columns() {
 		return array(
-			'created' => array( 'date', true ),
-			'event'   => array( 'event', false ),
+			'created' => array( 'date', true, '', esc_html__( 'Table ordered by Date.', 'tagmend-accessibility-fixes' ), 'desc' ),
+			'event'   => array( 'event', false, '', esc_html__( 'Table ordered by Event.', 'tagmend-accessibility-fixes' ) ),
 		);
 	}
 

@@ -71,7 +71,7 @@ final class Fix_Button_Name extends Fix_Base {
 	 * @return string
 	 */
 	public function description(): string {
-		return __( 'Names buttons that have no text, such as search, menu, close and icon buttons, with an aria-label, and gives empty Submit buttons a value. Buttons it cannot name are listed in the report.', 'tagmend-accessibility-fixes' );
+		return __( 'Names buttons that have no text, such as search, menu, close and icon buttons, with an aria-label, and gives an empty Submit button a value, or an aria-label when the button has a name (its value is sent with the form). Buttons it cannot name are listed in the report.', 'tagmend-accessibility-fixes' );
 	}
 
 	/**
@@ -180,10 +180,12 @@ final class Fix_Button_Name extends Fix_Base {
 			if ( Accessible_Name::KIND_BUTTON !== $button->kind || 'image' === $button->type || $button->hidden || $button->is_named() ) {
 				continue;
 			}
-			// An empty value on a submit input is repaired in place, so the button shows its label too.
-			$value_repair = 'INPUT' === $button->tag && 'submit' === $button->type && $button->has( 'value' );
+			// An empty value on a submit input is repaired in place, so the button shows its label too;
+			// on a submit input with a name the value is sent with the form, so it gets an aria-label instead.
+			$empty_submit = 'INPUT' === $button->tag && 'submit' === $button->type && $button->has( 'value' );
+			$value_repair = $empty_submit && '' === (string) $button->raw( 'name' );
 			$label        = $this->label_for( $button, $index );
-			if ( '' === $label && $value_repair ) {
+			if ( '' === $label && $empty_submit ) {
 				$label = __( 'Submit', 'tagmend-accessibility-fixes' );
 			}
 			if ( '' !== $label ) {

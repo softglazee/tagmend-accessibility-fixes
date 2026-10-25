@@ -456,7 +456,7 @@ final class Screen_Report_Details {
 				<?php foreach ( $changes as $change ) : ?>
 					<tr>
 						<td><code><?php echo esc_html( isset( $change['sig'] ) ? (string) $change['sig'] : '' ); ?></code></td>
-						<td><code><?php echo esc_html( isset( $change['attr'] ) ? (string) $change['attr'] : '' ); ?></code></td>
+						<td><code class="softglaze-a11y-attr"><?php echo esc_html( isset( $change['attr'] ) ? (string) $change['attr'] : '' ); ?></code></td>
 						<td><?php echo isset( $change['before'] ) && null !== $change['before'] ? esc_html( '' === (string) $change['before'] ? __( '(empty)', 'tagmend-accessibility-fixes' ) : (string) $change['before'] ) : esc_html__( '(none)', 'tagmend-accessibility-fixes' ); ?></td>
 						<td><?php echo esc_html( isset( $change['after'] ) && '' !== (string) $change['after'] ? (string) $change['after'] : __( '(empty)', 'tagmend-accessibility-fixes' ) ); ?></td>
 						<td><?php echo esc_html( Report_View::state_label( isset( $change['state'] ) ? (string) $change['state'] : 'off' ) ); ?></td>
@@ -471,7 +471,7 @@ final class Screen_Report_Details {
 							<input type="hidden" name="action" value="<?php echo esc_attr( self::GO_LIVE_ACTION ); ?>">
 							<input type="hidden" name="<?php echo esc_attr( Screen_Reports::REPORT_ARG ); ?>" value="<?php echo esc_attr( $hash ); ?>">
 							<input type="hidden" name="<?php echo esc_attr( self::FIX_FIELD ); ?>" value="<?php echo esc_attr( $fix_id ); ?>">
-							<?php wp_nonce_field( self::GO_LIVE_ACTION, Screen_Reports::NONCE_ARG ); ?>
+							<input type="hidden" name="<?php echo esc_attr( Screen_Reports::NONCE_ARG ); ?>" value="<?php echo esc_attr( wp_create_nonce( self::GO_LIVE_ACTION ) ); ?>">
 							<button type="submit" class="button button-primary"><?php echo esc_html__( 'Move to Live', 'tagmend-accessibility-fixes' ); ?><span class="screen-reader-text">: <?php echo esc_html( $label ); ?></span></button>
 						</form>
 					<?php elseif ( 'live' !== $saved ) : ?>
@@ -483,7 +483,7 @@ final class Screen_Report_Details {
 							<input type="hidden" name="<?php echo esc_attr( Screen_Reports::REPORT_ARG ); ?>" value="<?php echo esc_attr( $hash ); ?>">
 							<input type="hidden" name="<?php echo esc_attr( self::FIX_FIELD ); ?>" value="<?php echo esc_attr( $fix_id ); ?>">
 							<input type="hidden" name="<?php echo esc_attr( self::SKIP_FIELD ); ?>" value="<?php echo $skipped ? '0' : '1'; ?>">
-							<?php wp_nonce_field( self::SKIP_ACTION, Screen_Reports::NONCE_ARG ); ?>
+							<input type="hidden" name="<?php echo esc_attr( Screen_Reports::NONCE_ARG ); ?>" value="<?php echo esc_attr( wp_create_nonce( self::SKIP_ACTION ) ); ?>">
 							<button type="submit" class="button"><?php echo $skipped ? esc_html__( 'Stop skipping on this page', 'tagmend-accessibility-fixes' ) : esc_html__( 'Skip on this page', 'tagmend-accessibility-fixes' ); ?><span class="screen-reader-text">: <?php echo esc_html( $label ); ?></span></button>
 						</form>
 					<?php endif; ?>

@@ -7,6 +7,7 @@
 
 namespace SoftGlaze\AccessibilityRepair\Cli;
 
+use SoftGlaze\AccessibilityRepair\Attachment_Lookup;
 use SoftGlaze\AccessibilityRepair\Engine;
 use SoftGlaze\AccessibilityRepair\Plugin;
 use SoftGlaze\AccessibilityRepair\Report\Pages_Store;
@@ -106,7 +107,14 @@ final class Command {
 			WP_CLI::error( 'The file could not be read: ' . $path );
 		}
 
-		$engine = new Engine( $plugin->registry()->fixes(), $plugin->settings()->fix_states(), array( 'checks' => $plugin->registry()->checks() ) );
+		$engine = new Engine(
+			$plugin->registry()->fixes(),
+			$plugin->settings()->fix_states(),
+			array(
+				'checks'      => $plugin->registry()->checks(),
+				'attachments' => new Attachment_Lookup( true ),
+			)
+		);
 		$engine->run( $html, Engine::MODE_SCAN, $scope );
 		$result = $engine->recorder()->to_array();
 

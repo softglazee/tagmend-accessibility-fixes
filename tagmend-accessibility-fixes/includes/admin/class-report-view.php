@@ -189,17 +189,18 @@ final class Report_View {
 
 	/**
 	 * A front-end "View original" or "View repaired" link for a page, with a
-	 * nonce for the softglaze_a11y_view action.
+	 * nonce for the view action of that page only (Request_Gate::view_nonce_action()).
 	 *
-	 * @param string $url  Page URL.
+	 * @param string $url  Absolute page URL on this site.
 	 * @param string $view 'original' or 'repaired'.
 	 * @return string
 	 */
 	public static function view_url( string $url, string $view ): string {
+		$url = remove_query_arg( array( Request_Gate::SCAN_ARG, Request_Gate::SCAN_NONCE_ARG, Request_Gate::VIEW_ARG, Request_Gate::VIEW_NONCE_ARG ), $url );
 		return add_query_arg(
 			array(
 				Request_Gate::VIEW_ARG       => 'repaired' === $view ? 'repaired' : 'original',
-				Request_Gate::VIEW_NONCE_ARG => wp_create_nonce( Request_Gate::VIEW_ACTION ),
+				Request_Gate::VIEW_NONCE_ARG => wp_create_nonce( Request_Gate::view_nonce_action( Request_Gate::url_hash_of( $url ) ) ),
 			),
 			$url
 		);

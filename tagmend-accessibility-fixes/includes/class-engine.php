@@ -201,6 +201,296 @@ class Engine {
 	);
 
 	/**
+	 * Start tags that end an open p element (the HTML parser's "close a p element").
+	 */
+	const P_ENDED_BY_START = array(
+		'ADDRESS'    => true,
+		'ARTICLE'    => true,
+		'ASIDE'      => true,
+		'BLOCKQUOTE' => true,
+		'CENTER'     => true,
+		'DD'         => true,
+		'DETAILS'    => true,
+		'DIALOG'     => true,
+		'DIR'        => true,
+		'DIV'        => true,
+		'DL'         => true,
+		'DT'         => true,
+		'FIELDSET'   => true,
+		'FIGCAPTION' => true,
+		'FIGURE'     => true,
+		'FOOTER'     => true,
+		'FORM'       => true,
+		'H1'         => true,
+		'H2'         => true,
+		'H3'         => true,
+		'H4'         => true,
+		'H5'         => true,
+		'H6'         => true,
+		'HEADER'     => true,
+		'HGROUP'     => true,
+		'HR'         => true,
+		'LI'         => true,
+		'LISTING'    => true,
+		'MAIN'       => true,
+		'MENU'       => true,
+		'NAV'        => true,
+		'OL'         => true,
+		'P'          => true,
+		'PLAINTEXT'  => true,
+		'PRE'        => true,
+		'SEARCH'     => true,
+		'SECTION'    => true,
+		'SUMMARY'    => true,
+		'TABLE'      => true,
+		'UL'         => true,
+		'XMP'        => true,
+	);
+
+	/**
+	 * End tags of elements that can hold a p element: they end it too.
+	 */
+	const P_ENDED_BY_END = array(
+		'ADDRESS'    => true,
+		'ARTICLE'    => true,
+		'ASIDE'      => true,
+		'BLOCKQUOTE' => true,
+		'BODY'       => true,
+		'CAPTION'    => true,
+		'CENTER'     => true,
+		'DD'         => true,
+		'DETAILS'    => true,
+		'DIALOG'     => true,
+		'DIR'        => true,
+		'DIV'        => true,
+		'DL'         => true,
+		'DT'         => true,
+		'FIELDSET'   => true,
+		'FIGCAPTION' => true,
+		'FIGURE'     => true,
+		'FOOTER'     => true,
+		'FORM'       => true,
+		'H1'         => true,
+		'H2'         => true,
+		'H3'         => true,
+		'H4'         => true,
+		'H5'         => true,
+		'H6'         => true,
+		'HEADER'     => true,
+		'HGROUP'     => true,
+		'HTML'       => true,
+		'LI'         => true,
+		'LISTING'    => true,
+		'MAIN'       => true,
+		'MENU'       => true,
+		'NAV'        => true,
+		'OL'         => true,
+		'PRE'        => true,
+		'SEARCH'     => true,
+		'SECTION'    => true,
+		'SUMMARY'    => true,
+		'TABLE'      => true,
+		'TBODY'      => true,
+		'TD'         => true,
+		'TFOOT'      => true,
+		'TH'         => true,
+		'THEAD'      => true,
+		'TR'         => true,
+		'UL'         => true,
+	);
+
+	/**
+	 * Elements whose end tag HTML lets authors leave out, and what ends them
+	 * when one of them is a frame (an aria-hidden list item, a paragraph with
+	 * a role): 'start', start tags that end it; 'end', end tags of the
+	 * elements around it that end it; 'inner', containers of the same kind
+	 * (a nested list or table, a button inside a paragraph). While such a
+	 * container is open inside the frame, those start and end tags belong to
+	 * the container; the end tag of an 'inner' container opened outside the
+	 * frame ends it as well. Without these rules a frame whose end tag was
+	 * left out would stay open to the end of the input.
+	 */
+	const IMPLIED_END = array(
+		'LI'       => array(
+			'start' => array( 'LI' => true ),
+			'end'   => array(),
+			'inner' => array(
+				'UL'    => true,
+				'OL'    => true,
+				'MENU'  => true,
+				'TABLE' => true,
+			),
+		),
+		'DT'       => array(
+			'start' => array(
+				'DT' => true,
+				'DD' => true,
+			),
+			'end'   => array(),
+			'inner' => array(
+				'DL'    => true,
+				'TABLE' => true,
+			),
+		),
+		'DD'       => array(
+			'start' => array(
+				'DT' => true,
+				'DD' => true,
+			),
+			'end'   => array(),
+			'inner' => array(
+				'DL'    => true,
+				'TABLE' => true,
+			),
+		),
+		'OPTION'   => array(
+			'start' => array(
+				'OPTION'   => true,
+				'OPTGROUP' => true,
+				'HR'       => true,
+			),
+			'end'   => array(
+				'SELECT'   => true,
+				'DATALIST' => true,
+				'OPTGROUP' => true,
+			),
+			'inner' => array(),
+		),
+		'OPTGROUP' => array(
+			'start' => array(
+				'OPTGROUP' => true,
+				'HR'       => true,
+			),
+			'end'   => array(
+				'SELECT'   => true,
+				'DATALIST' => true,
+			),
+			'inner' => array(),
+		),
+		'TR'       => array(
+			'start' => array(
+				'TR'       => true,
+				'TBODY'    => true,
+				'THEAD'    => true,
+				'TFOOT'    => true,
+				'CAPTION'  => true,
+				'COLGROUP' => true,
+				'COL'      => true,
+			),
+			'end'   => array(
+				'TBODY' => true,
+				'THEAD' => true,
+				'TFOOT' => true,
+			),
+			'inner' => array( 'TABLE' => true ),
+		),
+		'TD'       => array(
+			'start' => array(
+				'TD'       => true,
+				'TH'       => true,
+				'TR'       => true,
+				'TBODY'    => true,
+				'THEAD'    => true,
+				'TFOOT'    => true,
+				'CAPTION'  => true,
+				'COLGROUP' => true,
+				'COL'      => true,
+			),
+			'end'   => array(
+				'TR'    => true,
+				'TBODY' => true,
+				'THEAD' => true,
+				'TFOOT' => true,
+			),
+			'inner' => array( 'TABLE' => true ),
+		),
+		'TH'       => array(
+			'start' => array(
+				'TD'       => true,
+				'TH'       => true,
+				'TR'       => true,
+				'TBODY'    => true,
+				'THEAD'    => true,
+				'TFOOT'    => true,
+				'CAPTION'  => true,
+				'COLGROUP' => true,
+				'COL'      => true,
+			),
+			'end'   => array(
+				'TR'    => true,
+				'TBODY' => true,
+				'THEAD' => true,
+				'TFOOT' => true,
+			),
+			'inner' => array( 'TABLE' => true ),
+		),
+		'THEAD'    => array(
+			'start' => array(
+				'TBODY'    => true,
+				'THEAD'    => true,
+				'TFOOT'    => true,
+				'CAPTION'  => true,
+				'COLGROUP' => true,
+				'COL'      => true,
+			),
+			'end'   => array(),
+			'inner' => array( 'TABLE' => true ),
+		),
+		'TBODY'    => array(
+			'start' => array(
+				'TBODY'    => true,
+				'THEAD'    => true,
+				'TFOOT'    => true,
+				'CAPTION'  => true,
+				'COLGROUP' => true,
+				'COL'      => true,
+			),
+			'end'   => array(),
+			'inner' => array( 'TABLE' => true ),
+		),
+		'TFOOT'    => array(
+			'start' => array(
+				'TBODY'    => true,
+				'THEAD'    => true,
+				'TFOOT'    => true,
+				'CAPTION'  => true,
+				'COLGROUP' => true,
+				'COL'      => true,
+			),
+			'end'   => array(),
+			'inner' => array( 'TABLE' => true ),
+		),
+		'CAPTION'  => array(
+			'start' => array(
+				'CAPTION'  => true,
+				'COL'      => true,
+				'COLGROUP' => true,
+				'TBODY'    => true,
+				'TD'       => true,
+				'TFOOT'    => true,
+				'TH'       => true,
+				'THEAD'    => true,
+				'TR'       => true,
+			),
+			'end'   => array(),
+			'inner' => array( 'TABLE' => true ),
+		),
+		'P'        => array(
+			'start' => self::P_ENDED_BY_START,
+			'end'   => self::P_ENDED_BY_END,
+			'inner' => array(
+				'APPLET'   => true,
+				'BUTTON'   => true,
+				'MARQUEE'  => true,
+				'MATH'     => true,
+				'OBJECT'   => true,
+				'SVG'      => true,
+				'TEMPLATE' => true,
+			),
+		),
+	);
+
+	/**
 	 * Fixes by id.
 	 *
 	 * @var Fix[]
@@ -312,6 +602,13 @@ class Engine {
 	 * @var int
 	 */
 	private $hidden_open = 0;
+
+	/**
+	 * Number of open frames whose end tag may be left out (IMPLIED_END).
+	 *
+	 * @var int
+	 */
+	private $implied_open = 0;
 
 	/**
 	 * Tag => fixes listening to it, for the current run.
@@ -681,6 +978,7 @@ class Engine {
 		$this->collecting          = 0;
 		$this->containers          = array();
 		$this->hidden_open         = 0;
+		$this->implied_open        = 0;
 		$this->names               = false;
 		$this->landmarks           = false;
 		$this->controls            = false;
@@ -786,6 +1084,9 @@ class Engine {
 
 			$name = (string) $processor->get_token_name();
 			if ( ! self::is_opener( $processor, $type ) ) {
+				if ( $this->implied_open > 0 ) {
+					$this->implied_ends_by_end_tag( $name );
+				}
 				// Most end tags close nothing the pass tracks.
 				if ( ! empty( $this->open_tags[ $name ] ) || isset( self::HEADINGS[ $name ] ) ) {
 					$this->close_tag( $name );
@@ -794,6 +1095,9 @@ class Engine {
 			}
 
 			++$ordinal;
+			if ( $this->implied_open > 0 ) {
+				$this->implied_ends_by_start_tag( $processor, $name );
+			}
 			$this->open_tag( $processor, $ordinal, $name );
 		}
 
@@ -809,7 +1113,10 @@ class Engine {
 			return null;
 		}
 
-		// Elements still open at the end of the input close here.
+		// Elements still open at the end of the input close here; fixes can tell them from closed ones.
+		foreach ( $this->stack as $frame ) {
+			$frame->open_at_end = true;
+		}
 		while ( ! empty( $this->stack ) ) {
 			$this->pop_to( count( $this->stack ) - 1 );
 		}
@@ -1018,6 +1325,9 @@ class Engine {
 			}
 			if ( $hidden ) {
 				++$this->hidden_open;
+			}
+			if ( isset( self::IMPLIED_END[ $name ] ) ) {
+				++$this->implied_open;
 			}
 		} elseif ( $can_open && ! empty( $this->open_tags[ $name ] ) ) {
 			// An untracked element with the same name as an open frame: its end tag must not close the frame.
@@ -1290,6 +1600,9 @@ class Engine {
 			if ( $frame->aria_hidden ) {
 				--$this->hidden_open;
 			}
+			if ( isset( self::IMPLIED_END[ $frame->tag ] ) ) {
+				--$this->implied_open;
+			}
 			if ( $this->names ) {
 				$this->closed_for_names( $frame );
 			}
@@ -1353,9 +1666,72 @@ class Engine {
 			$frame = $this->stack[ $i ];
 			if ( $frame->collects_text ) {
 				$frame->add_text( $text );
+			} elseif ( 'SVG' === $frame->tag && ! $frame->has_text && '' !== Element::without_private_use( $text ) ) {
+				// Text inside an SVG (text, foreignObject) is part of the name of the control around it.
+				$frame->has_text = true;
 			}
 			if ( $frame->barrier ) {
 				return;
+			}
+		}
+	}
+
+	/**
+	 * A start tag that ends open frames whose end tag was left out (a new
+	 * list item ends the previous one, a block ends a paragraph), and counts
+	 * the containers of their kind opened inside them.
+	 *
+	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
+	 * @param string                $name      Upper-case tag name.
+	 * @return void
+	 */
+	private function implied_ends_by_start_tag( WP_HTML_Tag_Processor $processor, string $name ): void {
+		$opens = ! ( ( 'SVG' === $name || 'MATH' === $name ) && $processor->has_self_closing_flag() );
+		for ( $i = count( $this->stack ) - 1; $i >= 0; $i-- ) {
+			$frame = $this->stack[ $i ];
+			if ( ! isset( self::IMPLIED_END[ $frame->tag ] ) ) {
+				continue;
+			}
+			$rules = self::IMPLIED_END[ $frame->tag ];
+			if ( 0 === $frame->inner && isset( $rules['start'][ $name ] ) ) {
+				// Frames inside it close with it, as in the parser.
+				$this->pop_to( $i );
+				continue;
+			}
+			if ( $opens && isset( $rules['inner'][ $name ] ) ) {
+				++$frame->inner;
+			}
+		}
+	}
+
+	/**
+	 * An end tag that ends open frames whose own end tag was left out: the
+	 * end of the list, table or select around them, or of a block around a
+	 * paragraph. The end tag of a container counted by
+	 * implied_ends_by_start_tag() only closes that container.
+	 *
+	 * @param string $name Upper-case tag name.
+	 * @return void
+	 */
+	private function implied_ends_by_end_tag( string $name ): void {
+		for ( $i = count( $this->stack ) - 1; $i >= 0; $i-- ) {
+			$frame = $this->stack[ $i ];
+			if ( $name === $frame->tag || ! isset( self::IMPLIED_END[ $frame->tag ] ) ) {
+				continue;
+			}
+			$rules = self::IMPLIED_END[ $frame->tag ];
+			if ( $frame->inner > 0 ) {
+				if ( isset( $rules['inner'][ $name ] ) ) {
+					--$frame->inner;
+					if ( 0 === $frame->inner ) {
+						// Same-name elements inside the closed container closed with it.
+						$frame->nested = 0;
+					}
+				}
+				continue;
+			}
+			if ( isset( $rules['inner'][ $name ] ) || isset( $rules['end'][ $name ] ) ) {
+				$this->pop_to( $i );
 			}
 		}
 	}
@@ -1602,14 +1978,15 @@ class Engine {
 	 */
 	private function end_run(): void {
 		$this->token->clear();
-		$this->stack       = array();
-		$this->open_tags   = array();
-		$this->collecting  = 0;
-		$this->containers  = array();
-		$this->hidden_open = 0;
-		$this->index       = null;
-		$this->plan        = null;
-		$this->dispatch    = array(
+		$this->stack        = array();
+		$this->open_tags    = array();
+		$this->collecting   = 0;
+		$this->containers   = array();
+		$this->hidden_open  = 0;
+		$this->implied_open = 0;
+		$this->index        = null;
+		$this->plan         = null;
+		$this->dispatch     = array(
 			'fixes'  => array(),
 			'checks' => array(),
 			'hidden' => array(),

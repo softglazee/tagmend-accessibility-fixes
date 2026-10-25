@@ -104,7 +104,7 @@ Most repairs change attributes such as alt, aria-label, lang and tabindex, which
 
 = Does it work with page caching? =
 
-Yes. Cached pages contain the repairs. After changing a repair, purge your page cache; the Fixes and Overview screens remind you and name the cache plugin they detect. Scans and admin views are marked as not cacheable.
+Yes. Cached pages contain the repairs. After changing a repair, purge your page cache; the Fixes and Overview screens remind you and name the cache plugin they detect. Scans and admin views are marked as not cacheable. Clear fragment or menu caches of other plugins after using "View repaired": they can keep what the preview showed.
 
 = Will it slow my site down? =
 

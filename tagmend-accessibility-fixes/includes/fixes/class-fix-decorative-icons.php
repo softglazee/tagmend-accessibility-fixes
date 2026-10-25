@@ -276,7 +276,9 @@ final class Fix_Decorative_Icons extends Fix_Base {
 	}
 
 	/**
-	 * On the end of an SVG: decorative when it had no title.
+	 * On the end of an SVG: decorative when it had no title and no text that
+	 * names the control around it (hiding that SVG would leave the control
+	 * without a name).
 	 *
 	 * @param Token    $token    Closer.
 	 * @param Recorder $recorder Recorder.
@@ -289,6 +291,9 @@ final class Fix_Decorative_Icons extends Fix_Base {
 		}
 		if ( isset( $element->data[ self::KEY . '-img' ] ) ) {
 			$this->report_unnamed_svg( $recorder, $element->data[ self::KEY . '-img' ]['sig'] );
+			return;
+		}
+		if ( $element->has_text ) {
 			return;
 		}
 		if ( isset( $element->data[ self::KEY ] ) ) {

@@ -84,6 +84,28 @@ final class Install {
 	}
 
 	/**
+	 * Multisite: adds the site's two tables to the tables core drops when a
+	 * site is deleted (wpmu_drop_tables). The filter runs in the request that
+	 * deletes the site, so the plugin must be active on the site whose screen
+	 * (normally the main site's network admin) or WP-CLI --url is used.
+	 *
+	 * @param mixed $tables  Table names core drops, keyed by short name.
+	 * @param mixed $site_id Id of the site being deleted.
+	 * @return mixed
+	 */
+	public static function drop_site_tables( $tables, $site_id = 0 ) {
+		global $wpdb;
+		if ( ! is_array( $tables ) ) {
+			return $tables;
+		}
+		$prefix = $wpdb->get_blog_prefix( absint( $site_id ) );
+
+		$tables[ Report\Pages_Store::TABLE ] = $prefix . Report\Pages_Store::TABLE;
+		$tables[ Report\Log_Store::TABLE ]   = $prefix . Report\Log_Store::TABLE;
+		return $tables;
+	}
+
+	/**
 	 * Why network activation is refused.
 	 *
 	 * @return string
@@ -114,14 +136,40 @@ final class Install {
 	}
 
 	/**
-	 * Creates or upgrades both tables and stores the schema version.
+	 * Creates or upgrades both tables and stores the schema version, only
+	 * when both tables exist afterwards: without CREATE rights dbDelta() fails
+	 * quietly, and a stored version would make ready() true while every write
+	 * fails. The next admin request tries again.
 	 *
 	 * @return void
 	 */
 	public static function create_tables(): void {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( self::schema() );
-		update_option( self::OPTION, self::DB_VERSION );
+		if ( self::tables_exist() ) {
+			update_option( self::OPTION, self::DB_VERSION );
+		}
+	}
+
+	/**
+	 * Whether both tables exist.
+	 *
+	 * @return bool
+	 */
+	public static function tables_exist(): bool {
+		global $wpdb;
+		$suppress = $wpdb->suppress_errors( true );
+		$exist    = true;
+		foreach ( array( Report\Pages_Store::table_name(), Report\Log_Store::table_name() ) as $table ) {
+			// A probe of the plugin's own table right after dbDelta(); SHOW TABLES would not list temporary tables.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema check, never cached.
+			if ( false === $wpdb->query( $wpdb->prepare( 'SELECT 1 FROM %i LIMIT 0', $table ) ) ) {
+				$exist = false;
+				break;
+			}
+		}
+		$wpdb->suppress_errors( $suppress );
+		return $exist;
 	}
 
 	/**

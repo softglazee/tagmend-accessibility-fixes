@@ -74,7 +74,7 @@ final class Fix_Aria_Hidden_Focus extends Fix_Base {
 
 	/**
 	 * Focusable elements found inside aria-hidden containers: element snapshot,
-	 * tabindex before, ids of the containers.
+	 * tabindex before, ids of the containers, the container frames.
 	 *
 	 * @var array[]
 	 */
@@ -221,13 +221,13 @@ final class Fix_Aria_Hidden_Focus extends Fix_Base {
 			);
 		}
 
-		$ids = array();
-		$any = false;
+		$ids        = array();
+		$containers = array();
 		foreach ( $token->ancestors() as $ancestor ) {
 			if ( ! $ancestor->aria_hidden ) {
 				continue;
 			}
-			$any = true;
+			$containers[] = $ancestor;
 			if ( ! isset( $ancestor->data[ self::DATA_KEY ] ) || $ancestor->data[ self::DATA_KEY ]['revealed'] ) {
 				return;
 			}
@@ -235,19 +235,24 @@ final class Fix_Aria_Hidden_Focus extends Fix_Base {
 				$ids[] = $ancestor->data[ self::DATA_KEY ]['id'];
 			}
 		}
-		if ( ! $any || ! self::focusable( $token ) ) {
+		if ( empty( $containers ) || ! self::focusable( $token ) ) {
 			return;
 		}
 		$tabindex           = $token->attr( 'tabindex' );
 		$this->candidates[] = array(
-			'element'  => $token->snapshot( $recorder->is_recording() ),
-			'tabindex' => is_string( $tabindex ) ? $tabindex : null,
-			'ids'      => $ids,
+			'element'    => $token->snapshot( $recorder->is_recording() ),
+			'tabindex'   => is_string( $tabindex ) ? $tabindex : null,
+			'ids'        => $ids,
+			'containers' => $containers,
 		);
 	}
 
 	/**
-	 * Plans tabindex="-1" for each focusable element whose containers nothing points at.
+	 * Plans tabindex="-1" for each focusable element whose containers nothing
+	 * points at. An element counts as inside hidden content only when one of
+	 * its aria-hidden containers ended before the input did (by its end tag
+	 * or an implied end): a container still open at the end may have lost its
+	 * end tag, and everything after it would be taken out of the tab order.
 	 *
 	 * @param Document_Index $index    The complete index.
 	 * @param Plan           $plan     Planned edits.
@@ -256,6 +261,16 @@ final class Fix_Aria_Hidden_Focus extends Fix_Base {
 	 */
 	public function finish( Document_Index $index, Plan $plan, Recorder $recorder ): void {
 		foreach ( $this->candidates as $candidate ) {
+			$closed = false;
+			foreach ( $candidate['containers'] as $container ) {
+				if ( ! $container->open_at_end ) {
+					$closed = true;
+					break;
+				}
+			}
+			if ( ! $closed ) {
+				continue;
+			}
 			foreach ( $candidate['ids'] as $id ) {
 				if ( $index->is_controlled( $id ) || isset( $this->referenced[ $id ] ) ) {
 					continue 2;
@@ -263,6 +278,7 @@ final class Fix_Aria_Hidden_Focus extends Fix_Base {
 			}
 			$this->plan_at( $plan, $candidate['element'], 'tabindex', '-1', $candidate['tabindex'] );
 		}
+		$this->candidates = array();
 	}
 
 	/**

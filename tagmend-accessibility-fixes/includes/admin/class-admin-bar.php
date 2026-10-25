@@ -19,8 +19,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Adds "View original", "View repaired (Live + Preview)", "Changes on this
  * page (N)" and "Scan this page" for the current page (blueprint section
- * 10.2). The view links carry a nonce for the softglaze_a11y_view action,
- * the scan link one for softglaze_a11y_scan. N is the number of Live and
+ * 10.2). The view links carry a nonce for this page's softglaze_a11y_view
+ * action, the scan link one for its softglaze_a11y_scan action (each bound
+ * to the page's URL hash, Request_Gate). N is the number of Live and
  * Preview changes in the last stored report of this URL, and the item links
  * to that report's details. Front end only,
  * users who can manage options only, no CSS or JavaScript; Settings can
@@ -75,7 +76,22 @@ final class Admin_Bar {
 	}
 
 	/**
-	 * Adds the node and its links.
+	 * Scheme, host and port of the site's home URL, for example https://example.org.
+	 *
+	 * @return string
+	 */
+	private static function origin(): string {
+		$home = wp_parse_url( home_url( '/' ) );
+		if ( ! is_array( $home ) || empty( $home['scheme'] ) || empty( $home['host'] ) ) {
+			return '';
+		}
+		return $home['scheme'] . '://' . $home['host'] . ( isset( $home['port'] ) ? ':' . (int) $home['port'] : '' );
+	}
+
+	/**
+	 * Adds the node and its links. Links are absolute URLs on the site's own
+	 * origin, checked like scan targets; on a request whose address is not
+	 * such a page no node is added.
 	 *
 	 * @param WP_Admin_Bar $admin_bar The admin bar.
 	 * @return void
@@ -85,9 +101,13 @@ final class Admin_Bar {
 			return;
 		}
 
-		$page_uri = remove_query_arg( array( Request_Gate::VIEW_ARG, Request_Gate::VIEW_NONCE_ARG, Request_Gate::SCAN_ARG, Request_Gate::SCAN_NONCE_ARG ), $this->gate->request_uri() );
-		$nonce    = wp_create_nonce( Request_Gate::VIEW_ACTION );
-		$report   = $this->scanner->pages()->get_by_hash( $this->gate->url_hash() );
+		// Absolute links on this site's own origin: a request path such as "//other.example/x" stays a path here.
+		$page_url = $this->scanner->validate_target( self::origin() . $this->gate->request_uri() );
+		if ( '' === $page_url ) {
+			return;
+		}
+		$nonce  = wp_create_nonce( Request_Gate::view_nonce_action( Request_Gate::url_hash_of( $page_url ) ) );
+		$report = $this->scanner->pages()->get_by_hash( $this->gate->url_hash() );
 
 		$node_title_escaped     = esc_html__( 'Tagmend', 'tagmend-accessibility-fixes' );
 		$original_title_escaped = esc_html__( 'View original', 'tagmend-accessibility-fixes' );
@@ -122,7 +142,7 @@ final class Admin_Bar {
 						Request_Gate::VIEW_ARG       => 'original',
 						Request_Gate::VIEW_NONCE_ARG => $nonce,
 					),
-					$page_uri
+					$page_url
 				),
 			)
 		);
@@ -136,7 +156,7 @@ final class Admin_Bar {
 						Request_Gate::VIEW_ARG       => 'repaired',
 						Request_Gate::VIEW_NONCE_ARG => $nonce,
 					),
-					$page_uri
+					$page_url
 				),
 			)
 		);
@@ -154,7 +174,7 @@ final class Admin_Bar {
 				'parent' => self::NODE,
 				'id'     => self::NODE . '-scan',
 				'title'  => $scan_title_escaped,
-				'href'   => $this->scanner->scan_url( $page_uri ),
+				'href'   => $this->scanner->scan_url( $page_url ),
 			)
 		);
 	}

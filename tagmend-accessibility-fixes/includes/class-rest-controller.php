@@ -20,10 +20,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * (blueprint section 10.3):
  *
  * - POST scan-targets: keeps only URLs on this site (scheme, host and port
- *   of home_url()) and returns each with the scan arg and a fresh nonce, so
- *   the administrator's browser can scan them; anything else is a 400. A
- *   target on a "Never repair these paths" prefix is marked excluded: the
- *   gate refuses it, so scanning it would store nothing.
+ *   of home_url()) and returns each with the scan arg and a fresh nonce for
+ *   that page only, so the administrator's browser can scan them; anything
+ *   else is a 400. A target on a "Never repair these paths" prefix is
+ *   marked excluded: the gate refuses it, so scanning it would store nothing.
  * - GET report?url=: the stored summary for one URL (counts only).
  *
  * The routes declare no required flag and no validate callback, and their

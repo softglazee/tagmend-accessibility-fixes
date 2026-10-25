@@ -48,7 +48,8 @@ final class Accessible_Name {
 	);
 
 	/**
-	 * Attributes read from a button's opener when present (naming, F06).
+	 * Attributes read from a button's opener when present (naming, F06; name:
+	 * whether a submit input's value is sent with the form).
 	 */
 	const BUTTON_ATTRIBUTES = array(
 		'alt'             => true,
@@ -57,6 +58,7 @@ final class Accessible_Name {
 		'aria-labelledby' => true,
 		'class'           => true,
 		'hidden'          => true,
+		'name'            => true,
 		'title'           => true,
 		'type'            => true,
 		'value'           => true,

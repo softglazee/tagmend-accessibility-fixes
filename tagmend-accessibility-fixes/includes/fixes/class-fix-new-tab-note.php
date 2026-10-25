@@ -208,7 +208,7 @@ final class Fix_New_Tab_Note extends Fix_Base {
 				$words[] = $link->attr( 'title' );
 			}
 			$words = implode( ' ', $words );
-			if ( 1 === preg_match( self::WORDING, $words ) || ( '' !== $note && false !== mb_stripos( $words, $note ) ) ) {
+			if ( 1 === preg_match( self::WORDING, $words ) || self::contains_text( $words, $note ) ) {
 				continue;
 			}
 			$ids[] = self::NOTE_ID;

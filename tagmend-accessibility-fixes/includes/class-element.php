@@ -66,12 +66,37 @@ final class Element {
 	public $has_svg_title = false;
 
 	/**
+	 * True on SVG frames when text inside (a text or foreignObject element)
+	 * reached the name of a control around the SVG.
+	 *
+	 * @var bool
+	 */
+	public $has_text = false;
+
+	/**
 	 * Untracked elements with the same tag still open inside this one; their
 	 * end tags do not close the frame.
 	 *
 	 * @var int
 	 */
 	public $nested = 0;
+
+	/**
+	 * On frames whose end tag may be left out (Engine::IMPLIED_END): containers
+	 * of their own kind (a nested list or table) still open inside. While one
+	 * is open, the start and end tags that would end this frame belong to it.
+	 *
+	 * @var int
+	 */
+	public $inner = 0;
+
+	/**
+	 * Whether the element was still open when the input ended: closed by the
+	 * final flush, not by its end tag or an implied end.
+	 *
+	 * @var bool
+	 */
+	public $open_at_end = false;
 
 	/**
 	 * Element openers (other than br and wbr) seen while this frame was the

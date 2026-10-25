@@ -5,10 +5,16 @@
  *
  * Flow (blueprint section 10.3): the candidate addresses go to the REST route
  * softglaze-a11y/v1/scan-targets, which keeps only pages of this site and
- * returns each with a scan link carrying a fresh nonce. Each page is then
- * requested once, one at a time, with the administrator's own cookies; the
- * site stores the report at the end of that request. The summary is read
- * from softglaze-a11y/v1/report and announced in the polite live region.
+ * returns each with a scan link carrying a fresh nonce for that page. Each
+ * page is then requested once, one at a time, with the administrator's own
+ * cookies; the site stores the report at the end of that request. The
+ * summary is read from softglaze-a11y/v1/report. The polite live region gets
+ * short progress ("Scanned 3 of 8.") and one closing summary; the result of
+ * each page stays in the visible list.
+ *
+ * While a scan runs, the scan controls are marked aria-disabled (never
+ * disabled, so the control that has focus keeps it) and a second request
+ * is answered with "A scan is already running."
  *
  * Data comes from data-* attributes on the scanner section only.
  */
@@ -32,6 +38,9 @@
 	var resultsList = panel.querySelector( '.softglaze-a11y-scan-results' );
 	var controls = panel.querySelector( '.softglaze-a11y-scan-controls' );
 	var noScript = panel.querySelector( '.softglaze-a11y-nojs' );
+	var form = panel.querySelector( '[data-softglaze-a11y-scan-form]' );
+	var field = form ? form.querySelector( 'input[type="url"]' ) : null;
+	var fieldError = form ? form.querySelector( '.softglaze-a11y-field-error' ) : null;
 	var busy = false;
 
 	if ( controls ) {
@@ -40,6 +49,8 @@
 	if ( noScript ) {
 		noScript.hidden = true;
 	}
+	// The status region can take focus when a Rescan link far below it starts a scan.
+	statusRegion.setAttribute( 'tabindex', '-1' );
 
 	panel.querySelectorAll( '[data-softglaze-a11y-scan]' ).forEach( function ( button ) {
 		button.addEventListener( 'click', function () {
@@ -52,23 +63,32 @@
 		} );
 	} );
 
-	var form = panel.querySelector( '[data-softglaze-a11y-scan-form]' );
-	if ( form ) {
+	if ( form && field ) {
 		form.addEventListener( 'submit', function ( event ) {
 			event.preventDefault();
-			var field = form.querySelector( 'input[type="url"]' );
-			if ( field && field.value.trim() ) {
-				run( [ field.value.trim() ] );
+			clearFieldError();
+			if ( field.value.trim() ) {
+				run( [ field.value.trim() ], { fromField: true } );
 			}
 		} );
+		field.addEventListener( 'input', clearFieldError );
 	}
 
 	// "Rescan" links work without JavaScript (they open the page in scan
-	// mode); here they scan in place and report in the live region.
+	// mode); here they act as buttons that scan in place, and focus moves to
+	// the status region, where the progress and the result are read.
 	document.querySelectorAll( 'a.softglaze-a11y-rescan[data-url]' ).forEach( function ( link ) {
-		link.addEventListener( 'click', function ( event ) {
+		link.setAttribute( 'role', 'button' );
+		var activate = function ( event ) {
 			event.preventDefault();
+			statusRegion.focus();
 			run( [ link.getAttribute( 'data-url' ) || '' ] );
+		};
+		link.addEventListener( 'click', activate );
+		link.addEventListener( 'keydown', function ( event ) {
+			if ( ' ' === event.key || 'Spacebar' === event.key ) {
+				activate( event );
+			}
 		} );
 	} );
 
@@ -116,6 +136,36 @@
 	}
 
 	/**
+	 * Ties a refusal of the typed address to the field: the message under
+	 * it, aria-invalid, and the field described by the message.
+	 *
+	 * @param {string} text Message.
+	 */
+	function showFieldError( text ) {
+		if ( ! field || ! fieldError ) {
+			return;
+		}
+		fieldError.textContent = text;
+		fieldError.hidden = false;
+		field.setAttribute( 'aria-invalid', 'true' );
+		field.setAttribute( 'aria-describedby', 'softglaze-a11y-scan-address-hint ' + fieldError.id );
+		field.focus();
+	}
+
+	/**
+	 * Removes the error state of the address field.
+	 */
+	function clearFieldError() {
+		if ( ! field || ! fieldError || fieldError.hidden ) {
+			return;
+		}
+		fieldError.textContent = '';
+		fieldError.hidden = true;
+		field.removeAttribute( 'aria-invalid' );
+		field.setAttribute( 'aria-describedby', 'softglaze-a11y-scan-address-hint' );
+	}
+
+	/**
 	 * Turns a rejected apiFetch() into a message: a REST error is a plain
 	 * object with a message, a network failure an Error.
 	 *
@@ -130,17 +180,19 @@
 	}
 
 	/**
-	 * Enables or disables every scan control.
+	 * Marks every scan control as busy or ready. aria-disabled keeps the
+	 * control in the tab order and keeps focus on it (a disabled button
+	 * would drop focus to the page); the busy flag in run() refuses the work.
 	 *
-	 * @param {boolean} disabled Whether to disable.
+	 * @param {boolean} state Whether a scan is running.
 	 */
-	function setBusy( disabled ) {
-		busy = disabled;
+	function setBusy( state ) {
+		busy = state;
 		document.querySelectorAll( '[data-softglaze-a11y-scan], [data-softglaze-a11y-scan-form] button, a.softglaze-a11y-rescan' ).forEach( function ( control ) {
-			if ( 'A' === control.tagName ) {
-				control.setAttribute( 'aria-disabled', disabled ? 'true' : 'false' );
+			if ( state ) {
+				control.setAttribute( 'aria-disabled', 'true' );
 			} else {
-				control.disabled = disabled;
+				control.removeAttribute( 'aria-disabled' );
 			}
 		} );
 	}
@@ -221,10 +273,13 @@
 	/**
 	 * Scans a list of addresses, one page at a time.
 	 *
-	 * @param {string[]} urls Addresses.
+	 * @param {string[]} urls    Addresses.
+	 * @param {Object}   options fromField: the address was typed in the field.
 	 */
-	async function run( urls ) {
+	async function run( urls, options ) {
+		options = options || {};
 		if ( busy ) {
+			announce( __( 'A scan is already running.', 'tagmend-accessibility-fixes' ) );
 			return;
 		}
 		urls = urls.filter( function ( url ) {
@@ -248,8 +303,13 @@
 			targets = Array.isArray( response.targets ) ? response.targets : [];
 		} catch ( error ) {
 			/* translators: %s: reason, for example "Only pages on this site can be scanned." */
-			announce( sprintf( __( 'The scan could not start: %s', 'tagmend-accessibility-fixes' ), errorMessage( error ) ) );
+			var refusal = sprintf( __( 'The scan could not start: %s', 'tagmend-accessibility-fixes' ), errorMessage( error ) );
 			setBusy( false );
+			if ( options.fromField ) {
+				showFieldError( refusal );
+			} else {
+				announce( refusal );
+			}
 			return;
 		}
 
@@ -260,34 +320,33 @@
 		) );
 
 		var scanned = 0;
-		var last = '';
+		var outcome = null;
 		for ( var i = 0; i < targets.length; i++ ) {
-			var outcome = await scanOne( targets[ i ] );
+			outcome = await scanOne( targets[ i ] );
 			if ( outcome.ok ) {
 				scanned++;
 			}
 			addResult( targets[ i ].url, outcome.text );
-			last = sprintf(
-				/* translators: 1: page number, 2: number of pages, 3: page address, 4: result */
-				__( 'Page %1$d of %2$d, %3$s: %4$s', 'tagmend-accessibility-fixes' ),
-				i + 1,
-				targets.length,
-				targets[ i ].url,
-				outcome.text
-			);
-			// The last page's result is read together with the closing message,
-			// so a quick second update cannot replace it before it is heard.
 			if ( i < targets.length - 1 ) {
-				announce( last );
+				announce( sprintf(
+					/* translators: 1: pages scanned so far, 2: pages in this scan */
+					__( 'Scanned %1$d of %2$d.', 'tagmend-accessibility-fixes' ),
+					i + 1,
+					targets.length
+				) );
 			}
 		}
 
-		announce( last + ' ' + sprintf(
-			/* translators: 1: pages scanned, 2: pages sent for scanning */
-			__( 'Scan finished: %1$d of %2$d pages scanned. Reload the screen to see the updated reports.', 'tagmend-accessibility-fixes' ),
-			scanned,
-			targets.length
-		) );
+		var closing = 1 === targets.length && outcome ?
+			/* translators: %s: result of the page, for example "2 Live, 0 Preview, 1 Off (would change), 3 need a person." */
+			sprintf( __( 'Scan finished: %s', 'tagmend-accessibility-fixes' ), outcome.text ) :
+			sprintf(
+				/* translators: 1: pages scanned, 2: pages sent for scanning */
+				__( 'Scan finished: %1$d of %2$d pages scanned. The result of each page is listed below.', 'tagmend-accessibility-fixes' ),
+				scanned,
+				targets.length
+			);
+		announce( closing + ' ' + __( 'Reload the screen to see the updated reports.', 'tagmend-accessibility-fixes' ) );
 		addReloadLink();
 		setBusy( false );
 	}

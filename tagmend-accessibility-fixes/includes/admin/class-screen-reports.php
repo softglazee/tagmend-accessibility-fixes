@@ -31,6 +31,12 @@ final class Screen_Reports {
 	const DELETE_ACTION = 'softglaze_a11y_delete_report';
 
 	/**
+	 * The confirmation step of "Delete report", a view of this screen.
+	 */
+	const STEP_ARG    = 'softglaze_a11y_step';
+	const STEP_DELETE = 'confirm-delete';
+
+	/**
 	 * Status values shown after a redirect back to this screen.
 	 */
 	const STATUSES = array( 'deleted', 'not_found', 'live', 'live_refused', 'skipped', 'unskipped', 'skip_refused' );
@@ -103,7 +109,7 @@ final class Screen_Reports {
 
 	/**
 	 * Before the screen is printed: the browser title says "Report details"
-	 * when a report is shown.
+	 * (or "Delete report" on the confirmation step) when a report is shown.
 	 *
 	 * @return void
 	 */
@@ -124,7 +130,8 @@ final class Screen_Reports {
 		if ( ! is_string( $admin_title ) || ! is_string( $title ) || '' === $title || 0 !== strpos( $admin_title, $title ) ) {
 			return $admin_title;
 		}
-		return esc_html__( 'Report details', 'tagmend-accessibility-fixes' ) . substr( $admin_title, strlen( $title ) );
+		$screen_title_escaped = self::delete_requested() ? esc_html__( 'Delete report', 'tagmend-accessibility-fixes' ) : esc_html__( 'Report details', 'tagmend-accessibility-fixes' );
+		return $screen_title_escaped . substr( $admin_title, strlen( $title ) );
 	}
 
 	/**
@@ -148,20 +155,31 @@ final class Screen_Reports {
 	}
 
 	/**
-	 * Delete link of one report, with a nonce.
+	 * The "Delete report" confirmation step of one report. Opening it
+	 * changes nothing; its form posts the deletion with a nonce.
 	 *
 	 * @param string $hash URL hash.
 	 * @return string
 	 */
 	public static function delete_url( string $hash ): string {
-		return add_query_arg(
+		return self::url(
 			array(
-				'action'         => self::DELETE_ACTION,
 				self::REPORT_ARG => $hash,
-				self::NONCE_ARG  => wp_create_nonce( self::DELETE_ACTION ),
-			),
-			admin_url( 'admin-post.php' )
+				self::STEP_ARG   => self::STEP_DELETE,
+			)
 		);
+	}
+
+	/**
+	 * Whether the confirmation step of "Delete report" is requested. Showing
+	 * it changes nothing, so the read needs no nonce; its form carries one.
+	 *
+	 * @return bool
+	 */
+	public static function delete_requested(): bool {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only view switch; compared with one literal.
+		$step = isset( $_GET[ self::STEP_ARG ] ) ? sanitize_key( wp_unslash( $_GET[ self::STEP_ARG ] ) ) : '';
+		return self::STEP_DELETE === $step;
 	}
 
 	/**
@@ -189,7 +207,7 @@ final class Screen_Reports {
 	}
 
 	/**
-	 * Handles the delete link: deletes, then returns to the screen.
+	 * Handles the delete form: deletes, then returns to the screen.
 	 *
 	 * @return void
 	 */
@@ -200,7 +218,8 @@ final class Screen_Reports {
 
 	/**
 	 * Checks the capability, then the nonce, then deletes one report row.
-	 * Returns the screen URL with the result.
+	 * Only the confirmation form's POST deletes: a GET link carries no nonce
+	 * here and is refused. Returns the screen URL with the result.
 	 *
 	 * @return string
 	 */
@@ -215,7 +234,7 @@ final class Screen_Reports {
 				)
 			);
 		}
-		$nonce = isset( $_GET[ self::NONCE_ARG ] ) ? sanitize_text_field( wp_unslash( $_GET[ self::NONCE_ARG ] ) ) : '';
+		$nonce = isset( $_POST[ self::NONCE_ARG ] ) ? sanitize_text_field( wp_unslash( $_POST[ self::NONCE_ARG ] ) ) : '';
 		if ( '' === $nonce || ! wp_verify_nonce( $nonce, self::DELETE_ACTION ) ) {
 			wp_die(
 				esc_html__( 'This link has expired. Open the Reports screen again and try once more.', 'tagmend-accessibility-fixes' ),
@@ -226,7 +245,7 @@ final class Screen_Reports {
 				)
 			);
 		}
-		$hash    = isset( $_GET[ self::REPORT_ARG ] ) ? sanitize_key( wp_unslash( $_GET[ self::REPORT_ARG ] ) ) : '';
+		$hash    = isset( $_POST[ self::REPORT_ARG ] ) ? sanitize_key( wp_unslash( $_POST[ self::REPORT_ARG ] ) ) : '';
 		$deleted = $this->scanner->pages()->delete_by_hash( $hash );
 		return self::url( array( self::STATUS_ARG => $deleted ? 'deleted' : 'not_found' ) );
 	}
@@ -298,6 +317,10 @@ final class Screen_Reports {
 		}
 		$hash   = self::requested_report();
 		$status = self::status();
+		if ( '' !== $hash && self::delete_requested() ) {
+			$this->render_delete_confirm( $hash );
+			return;
+		}
 		if ( '' !== $hash ) {
 			$this->details->render( $hash, $status );
 			return;
@@ -339,10 +362,22 @@ final class Screen_Reports {
 					</p>
 					<form class="softglaze-a11y-scan-url" data-softglaze-a11y-scan-form="1">
 						<label for="softglaze-a11y-scan-address"><?php echo esc_html__( 'Address of a page on this site', 'tagmend-accessibility-fixes' ); ?></label>
+						<p class="description" id="softglaze-a11y-scan-address-hint">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: example address (the home page of this site) */
+									__( 'The full address of a page on this site, for example: %s', 'tagmend-accessibility-fixes' ),
+									$home
+								)
+							);
+							?>
+						</p>
 						<span class="softglaze-a11y-scan-url-row">
-							<input type="url" id="softglaze-a11y-scan-address" class="regular-text" required autocomplete="url" spellcheck="false">
+							<input type="url" id="softglaze-a11y-scan-address" class="regular-text" required spellcheck="false" aria-describedby="softglaze-a11y-scan-address-hint">
 							<button type="submit" class="button"><?php echo esc_html__( 'Scan this address', 'tagmend-accessibility-fixes' ); ?></button>
 						</span>
+						<p class="softglaze-a11y-field-error" id="softglaze-a11y-scan-address-error" hidden></p>
 					</form>
 				</div>
 				<div class="softglaze-a11y-scan-status" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -354,6 +389,39 @@ final class Screen_Reports {
 				<input type="hidden" name="page" value="<?php echo esc_attr( self::PAGE ); ?>">
 				<?php $table->display(); ?>
 			</form>
+		</div>
+		<?php
+	}
+
+	/**
+	 * The confirmation step of "Delete report": names the page, then a POST
+	 * form with the nonce, and a Cancel link back to the list.
+	 *
+	 * @param string $hash URL hash.
+	 * @return void
+	 */
+	private function render_delete_confirm( string $hash ): void {
+		$row = $this->scanner->pages()->get_by_hash( $hash );
+		?>
+		<div class="wrap softglaze-a11y-screen softglaze-a11y-delete">
+			<p class="softglaze-a11y-back"><a href="<?php echo esc_url( self::url() ); ?>"><?php echo esc_html__( 'Back to Reports', 'tagmend-accessibility-fixes' ); ?></a></p>
+			<h1><?php echo esc_html__( 'Delete report', 'tagmend-accessibility-fixes' ); ?></h1>
+			<?php if ( null === $row ) : ?>
+				<p><?php echo esc_html__( 'That report no longer exists.', 'tagmend-accessibility-fixes' ); ?></p>
+			<?php else : ?>
+				<p><?php echo esc_html__( 'This deletes the stored report of this page:', 'tagmend-accessibility-fixes' ); ?></p>
+				<p class="softglaze-a11y-report-url"><strong><?php echo esc_html( (string) $row['url'] ); ?></strong></p>
+				<p><?php echo esc_html__( 'The page itself does not change, and you can scan it again at any time.', 'tagmend-accessibility-fixes' ); ?></p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="<?php echo esc_attr( self::DELETE_ACTION ); ?>">
+					<input type="hidden" name="<?php echo esc_attr( self::REPORT_ARG ); ?>" value="<?php echo esc_attr( $hash ); ?>">
+					<input type="hidden" name="<?php echo esc_attr( self::NONCE_ARG ); ?>" value="<?php echo esc_attr( wp_create_nonce( self::DELETE_ACTION ) ); ?>">
+					<p class="softglaze-a11y-confirm-actions">
+						<button type="submit" class="button button-primary"><?php echo esc_html__( 'Delete report', 'tagmend-accessibility-fixes' ); ?></button>
+						<a class="button" href="<?php echo esc_url( self::url() ); ?>"><?php echo esc_html__( 'Cancel', 'tagmend-accessibility-fixes' ); ?></a>
+					</p>
+				</form>
+			<?php endif; ?>
 		</div>
 		<?php
 	}

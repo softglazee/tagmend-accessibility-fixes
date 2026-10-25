@@ -57,7 +57,7 @@ final class Fix_Img_Alt_Empty_Library extends Fix_Base {
 	 * @return string
 	 */
 	public function description(): string {
-		return __( 'Replaces an empty alt attribute (alt="") with the alt text saved in the Media Library. Starts Off: the block editor writes alt="" for images whose alt text was left empty when they were inserted, which is also how an author marks an image as decorative, so this fix can undo a deliberate choice. Check what it would change in a report before you turn it on.', 'tagmend-accessibility-fixes' );
+		return __( 'Replaces an empty alt attribute (alt="") with the alt text saved in the Media Library. Starts Off: the block editor writes alt="" for images whose alt text was left empty when they were inserted, which is also how an author marks an image as decorative, so this fix can undo a deliberate choice. Check what it would change in a report before you turn it on. An image the page names only by its address, without the image id the editor adds, is repaired once a scan or "View repaired" has looked it up.', 'tagmend-accessibility-fixes' );
 	}
 
 	/**

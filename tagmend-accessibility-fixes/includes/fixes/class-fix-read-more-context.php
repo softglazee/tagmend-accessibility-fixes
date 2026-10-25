@@ -235,7 +235,7 @@ final class Fix_Read_More_Context extends Fix_Base {
 	 */
 	public static function normalise( string $text ): string {
 		$text = (string) preg_replace( '/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/u', '', $text );
-		return mb_strtolower( (string) preg_replace( '/[\s\x{00A0}]+/u', ' ', $text ) );
+		return self::lower( (string) preg_replace( '/[\s\x{00A0}]+/u', ' ', $text ) );
 	}
 
 	/**

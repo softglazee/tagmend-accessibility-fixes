@@ -23,8 +23,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * hands the report to the stores on shutdown.
  *
  * Whether a request is a scan is decided by the request gate (capability,
- * then the softglaze_a11y_scan nonce). This class makes no HTTP request: a
- * scan always runs inside the administrator's own browser request.
+ * then the softglaze_a11y_scan nonce bound to the page). This class makes no
+ * HTTP request: a scan always runs inside the administrator's own browser
+ * request.
  *
  * With the content filters (WordPress 6.5-6.8, the page pass switched off,
  * or another plugin stopping core's page buffer) the engine runs once per
@@ -186,9 +187,10 @@ final class Scanner {
 
 	/**
 	 * A scan link: the URL with softglaze_a11y_scan=1 and a fresh nonce for
-	 * the current user's session.
+	 * the current user's session and this page only (the nonce action holds
+	 * the page's URL hash, Request_Gate::scan_nonce_action()).
 	 *
-	 * @param string $url Absolute URL from validate_target(), or the current request URI.
+	 * @param string $url Absolute URL on this site, from validate_target().
 	 * @return string
 	 */
 	public function scan_url( string $url ): string {
@@ -197,7 +199,7 @@ final class Scanner {
 			add_query_arg(
 				array(
 					Request_Gate::SCAN_ARG       => '1',
-					Request_Gate::SCAN_NONCE_ARG => wp_create_nonce( Request_Gate::SCAN_ACTION ),
+					Request_Gate::SCAN_NONCE_ARG => wp_create_nonce( Request_Gate::scan_nonce_action( Request_Gate::url_hash_of( $url ) ) ),
 				),
 				$url
 			)
@@ -211,19 +213,7 @@ final class Scanner {
 	 * @return string
 	 */
 	public function normalise_target( string $url ): string {
-		$parts = wp_parse_url( esc_url_raw( $url ) );
-		$path  = is_array( $parts ) && isset( $parts['path'] ) ? $parts['path'] : '/';
-		$query = array();
-		if ( is_array( $parts ) && isset( $parts['query'] ) ) {
-			wp_parse_str( $parts['query'], $query );
-		}
-		$args = array();
-		foreach ( Request_Gate::URL_ARGS as $key ) {
-			if ( isset( $query[ $key ] ) && is_string( $query[ $key ] ) ) {
-				$args[ $key ] = $query[ $key ];
-			}
-		}
-		return Request_Gate::normalise_url( $path, $args );
+		return Request_Gate::normalised_url_of( $url );
 	}
 
 	/**

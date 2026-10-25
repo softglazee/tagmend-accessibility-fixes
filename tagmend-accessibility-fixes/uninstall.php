@@ -5,8 +5,8 @@
  * By default nothing is deleted, so a reinstall finds its settings, reports
  * and activity log again. Only when "Delete all data when the plugin is
  * deleted" is on in Settings (blueprint section 15) are the settings, the
- * schema version, the plugin's transients, the per-page skip lists, the
- * object cache group and both tables removed. On a multisite network each
+ * schema version, the saved image address map, the plugin's transients, the
+ * per-page skip lists, the object cache group and both tables removed. On a multisite network each
  * site decides for itself.
  *
  * @package SoftGlaze\AccessibilityRepair
@@ -35,6 +35,7 @@ function softglaze_a11y_uninstall_site() {
 
 	delete_option( 'softglaze_a11y_settings' );
 	delete_option( 'softglaze_a11y_db_version' );
+	delete_option( 'softglaze_a11y_attachment_urls' );
 
 	// Known transients first (also covers a persistent object cache), then any other with the prefix.
 	foreach ( array( 'size', 'encoding', 'time', 'incomplete', 'ordinal', 'apply', 'sanity', 'exception' ) as $reason ) {

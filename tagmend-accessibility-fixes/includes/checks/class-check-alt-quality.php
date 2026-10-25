@@ -200,10 +200,7 @@ final class Check_Alt_Quality extends Check_Base {
 			$text = $image['control']->normalized_text();
 			if ( ! $library ) {
 				// The control's text holds this alt once; compare what is left.
-				$position = mb_stripos( $text, $image['alt'] );
-				if ( false !== $position ) {
-					$text = mb_substr( $text, 0, $position ) . mb_substr( $text, $position + mb_strlen( $image['alt'] ) );
-				}
+				$text = Fix_Base::without_first( $text, (string) $image['alt'] );
 			}
 			if ( '' !== $compare && self::comparable( $text ) === $compare ) {
 				return __( 'Alt text repeats the link or button text, so it is read twice.', 'tagmend-accessibility-fixes' );
@@ -235,7 +232,7 @@ final class Check_Alt_Quality extends Check_Base {
 	 * @return string
 	 */
 	private static function comparable( string $text ): string {
-		$text = mb_strtolower( (string) preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $text ) );
+		$text = Fix_Base::lower( (string) preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $text ) );
 		return trim( $text );
 	}
 }

@@ -74,15 +74,19 @@ final class Pages_List_Table extends \WP_List_Table {
 
 	/**
 	 * Sortable columns: the request key is one of Pages_Store::SORT_COLUMNS.
+	 * Five-element arrays (WordPress 6.3+): core marks the column the list is
+	 * first sorted by (newest scan first) with aria-sort and prints a caption
+	 * that says how the table is ordered; it prints that text as given, so it
+	 * is escaped here.
 	 *
 	 * @return array
 	 */
 	protected function get_sortable_columns() {
 		return array(
-			'url'      => array( 'url', false ),
-			'scanned'  => array( 'scanned', true ),
-			'live'     => array( 'live', true ),
-			'findings' => array( 'findings', true ),
+			'url'      => array( 'url', false, '', esc_html__( 'Table ordered by Page.', 'tagmend-accessibility-fixes' ) ),
+			'scanned'  => array( 'scanned', true, '', esc_html__( 'Table ordered by Last scanned.', 'tagmend-accessibility-fixes' ), 'desc' ),
+			'live'     => array( 'live', true, '', esc_html__( 'Table ordered by Live changes.', 'tagmend-accessibility-fixes' ) ),
+			'findings' => array( 'findings', true, '', esc_html__( 'Table ordered by Needs a person.', 'tagmend-accessibility-fixes' ) ),
 		);
 	}
 

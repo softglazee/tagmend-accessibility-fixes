@@ -144,6 +144,13 @@
 	overflow-wrap: anywhere;
 }
 
+/* Attribute names stay whole (aria-hidden, not aria- / hidden). */
+.softglaze-a11y-changes code.softglaze-a11y-attr {
+	white-space: nowrap;
+	overflow-wrap: normal;
+	word-break: normal;
+}
+
 .softglaze-a11y-fix-actions {
 	display: flex;
 	flex-wrap: wrap;
@@ -164,9 +171,18 @@
 	margin: 12px 0;
 }
 
-.softglaze-a11y-status:focus {
+.softglaze-a11y-status:focus,
+.softglaze-a11y-scan-status:focus {
 	outline: 2px solid var(--softglaze-a11y-navy);
 	outline-offset: 2px;
+}
+
+.softglaze-a11y-field-error {
+	margin: 8px 0 0;
+	padding-left: 8px;
+	border-left: 4px solid #b32d2e;
+	color: #b32d2e;
+	font-weight: 600;
 }
 
 @media screen and (max-width: 782px) {
@@ -261,9 +277,14 @@
 
 .softglaze-a11y-fix-card legend {
 	padding: 0 4px;
+	color: var(--softglaze-a11y-navy);
+}
+
+.softglaze-a11y-fix-card .softglaze-a11y-fix-title {
+	margin: 0;
 	font-size: 14px;
 	font-weight: 600;
-	color: var(--softglaze-a11y-navy);
+	color: inherit;
 }
 
 .softglaze-a11y-fix-states {
@@ -291,7 +312,7 @@
 }
 
 .softglaze-a11y-fix-meta li {
-	margin-bottom: 2px;
+	margin-bottom: 8px;
 }
 
 .softglaze-a11y-confirm-list {

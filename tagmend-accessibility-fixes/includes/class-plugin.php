@@ -162,6 +162,7 @@ final class Plugin {
 		register_activation_hook( SOFTGLAZE_A11Y_FILE, array( $this->install, 'activate' ) );
 		add_action( 'init', array( $this->settings, 'register' ) );
 		add_action( 'softglaze_a11y_fix_state_changed', array( $this->log, 'record_state_change' ), 10, 4 );
+		add_filter( 'wpmu_drop_tables', array( Install::class, 'drop_site_tables' ), 10, 2 );
 		( new Rest_Controller( $this->scanner ) )->register();
 
 		if ( is_admin() ) {

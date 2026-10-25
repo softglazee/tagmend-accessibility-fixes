@@ -14,16 +14,53 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Collects the attachment ids and upload URLs the analyse pass finds, then
  * loads them in one batch (blueprint section 3.6): one _prime_post_caches()
- * call for the posts and their meta, and at most URL_LOOKUPS_MAX
- * attachment_url_to_postid() queries per instance, each result kept in the
- * object cache for 12 hours. One instance lives as long as its engine, which
- * is one request on the front end, so every fragment of a page shares it.
+ * call for the posts and their meta (and one for their parent posts).
+ *
+ * An image without an id in its markup is found by its URL. That lookup
+ * (attachment_url_to_postid()) compares an unindexed meta value, so it runs
+ * only in authenticated requests: scans, "View repaired" and WP-CLI, at most
+ * URL_LOOKUPS_MAX per instance. They save every answer, found or not, in one
+ * option that is not autoloaded (MAP_OPTION, at most MAP_MAX entries, the
+ * oldest dropped). Visitor requests read that option once and never query a
+ * URL nor write anything; an image no scan has seen yet is left alone.
+ *
+ * One instance lives as long as its engine, which is one request on the
+ * front end, so every fragment of a page shares it.
  */
 class Attachment_Lookup {
 
-	const CACHE_GROUP     = 'softglaze_a11y';
-	const CACHE_TTL       = 43200;
 	const URL_LOOKUPS_MAX = 20;
+
+	/**
+	 * Option holding upload path => attachment id (0: no attachment), as found by authenticated requests.
+	 */
+	const MAP_OPTION = 'softglaze_a11y_attachment_urls';
+
+	/**
+	 * Entries kept in the option; the oldest are dropped first.
+	 */
+	const MAP_MAX = 500;
+
+	/**
+	 * Whether this instance may query URLs and save the answers (authenticated requests only).
+	 *
+	 * @var bool
+	 */
+	private $query_urls = false;
+
+	/**
+	 * The saved map, read once on first need.
+	 *
+	 * @var int[]|null
+	 */
+	private $map = null;
+
+	/**
+	 * Answers of this instance's URL queries waiting to be saved: path => id.
+	 *
+	 * @var int[]
+	 */
+	private $learned = array();
 
 	/**
 	 * Attachment id => raw Media Library alt text ('' when none or not an attachment).
@@ -61,7 +98,8 @@ class Attachment_Lookup {
 	private $pending_paths = array();
 
 	/**
-	 * Upload paths left unresolved because the lookup limit was reached.
+	 * Upload paths left unresolved: the lookup limit was reached, or (in a
+	 * visitor request) no authenticated request has looked them up yet.
 	 *
 	 * @var bool[]
 	 */
@@ -89,6 +127,24 @@ class Attachment_Lookup {
 	private $baseurl = '';
 
 	/**
+	 * Creates a lookup.
+	 *
+	 * @param bool $query_urls True only for authenticated requests (scan, admin view, WP-CLI): may run URL queries and save their answers.
+	 */
+	public function __construct( bool $query_urls = false ) {
+		$this->query_urls = $query_urls;
+	}
+
+	/**
+	 * Whether this instance may query URLs.
+	 *
+	 * @return bool
+	 */
+	public function queries_urls(): bool {
+		return $this->query_urls;
+	}
+
+	/**
 	 * The attachment id an img carries in its markup: the wp-image-{id} class
 	 * the editors write, or a data-id / data-attachment-id attribute.
 	 *
@@ -113,8 +169,10 @@ class Attachment_Lookup {
 	/**
 	 * Asks for the attachment behind the current img opener: the id from its
 	 * markup, otherwise its URL (src, or data-src / data-lazy-src when src is
-	 * a placeholder). Ids read from data-id or data-attachment-id are only
-	 * trusted when the attachment's file name appears in the image URL.
+	 * a placeholder). An id from the markup (wp-image-{id}, data-id or
+	 * data-attachment-id) is only trusted when the attachment's file name
+	 * appears in the image URL: imported content and switch_to_blog() can
+	 * carry ids of other attachments.
 	 *
 	 * @param Token $token     An img opener.
 	 * @param bool  $allow_url Whether a URL lookup may be spent when the markup carries no id.
@@ -139,7 +197,7 @@ class Attachment_Lookup {
 				'id'     => $id,
 				'path'   => '',
 				'src'    => $src,
-				'verify' => false,
+				'verify' => true,
 			);
 		}
 
@@ -199,7 +257,9 @@ class Attachment_Lookup {
 	}
 
 	/**
-	 * Resolves pending URLs (up to the limit), then loads every pending id in one batch.
+	 * Resolves pending URLs (queries up to the limit in authenticated
+	 * requests, the saved map otherwise), saves new answers, then loads every
+	 * pending id in one batch.
 	 *
 	 * @return void
 	 */
@@ -211,9 +271,12 @@ class Attachment_Lookup {
 				continue;
 			}
 			$this->paths[ $path ] = $id;
-			$this->request_id( $id );
+			if ( $id > 0 ) {
+				$this->request_id( $id );
+			}
 		}
 		$this->pending_paths = array();
+		$this->save_map();
 
 		if ( empty( $this->pending_ids ) ) {
 			return;
@@ -238,7 +301,8 @@ class Attachment_Lookup {
 	}
 
 	/**
-	 * Whether an upload path was left unresolved because of the lookup limit.
+	 * Whether an upload path was left unresolved: the lookup limit was
+	 * reached, or no authenticated request has looked it up yet (visitors).
 	 *
 	 * @param string $path Key returned by request_url().
 	 * @return bool
@@ -280,22 +344,44 @@ class Attachment_Lookup {
 	}
 
 	/**
-	 * Loads attachment posts and their meta in one batch (one _prime_post_caches() call).
+	 * Loads attachment posts and their meta in one batch (one
+	 * _prime_post_caches() call, and one more for their parent posts).
+	 * Attachments that are not public themselves (trashed, private, draft)
+	 * and attachments of a post visitors cannot see (a draft, a private post
+	 * or post type) give nothing; unattached ones do.
 	 *
 	 * @param int[] $ids Attachment ids.
 	 * @return array Id => array( 'alt' => raw alt text, 'file' => attached file path ), attachments only.
 	 */
 	protected function read_attachments( array $ids ): array {
 		_prime_post_caches( $ids, false, true );
-		$found = array();
+		$posts   = array();
+		$parents = array();
 		foreach ( $ids as $id ) {
 			// Ids that are not posts at all are not cached by the batch; skip them instead of querying each one.
 			if ( false === wp_cache_get( $id, 'posts' ) ) {
 				continue;
 			}
 			$post = get_post( $id );
-			if ( ! $post || 'attachment' !== $post->post_type || 'trash' === $post->post_status ) {
+			if ( ! $post || 'attachment' !== $post->post_type || ! in_array( $post->post_status, array( 'inherit', 'publish' ), true ) ) {
 				continue;
+			}
+			$posts[ $id ] = $post;
+			if ( $post->post_parent > 0 ) {
+				$parents[ (int) $post->post_parent ] = true;
+			}
+		}
+		if ( ! empty( $parents ) ) {
+			_prime_post_caches( array_keys( $parents ), false, false );
+		}
+
+		$found = array();
+		foreach ( $posts as $id => $post ) {
+			if ( $post->post_parent > 0 ) {
+				$parent = false === wp_cache_get( (int) $post->post_parent, 'posts' ) ? null : get_post( (int) $post->post_parent );
+				if ( ! $parent || ! is_post_publicly_viewable( $parent ) ) {
+					continue;
+				}
 			}
 			$alt          = get_post_meta( $id, '_wp_attachment_image_alt', true );
 			$file         = get_post_meta( $id, '_wp_attached_file', true );
@@ -332,19 +418,32 @@ class Attachment_Lookup {
 	}
 
 	/**
-	 * Id for an upload path from the object cache or a capped query; null when the limit is reached.
+	 * Id for an upload path: in authenticated requests a capped query (its
+	 * answer is kept for the map); otherwise, or once the limit is reached,
+	 * the saved map. Null when neither knows the path.
 	 *
 	 * @param string $path Upload path relative to the uploads folder.
 	 * @return int|null
 	 */
 	private function resolve_path( string $path ) {
-		$key    = 'url_' . md5( $path );
-		$found  = false;
-		$cached = wp_cache_get( $key, self::CACHE_GROUP, false, $found );
-		if ( $found ) {
-			return (int) $cached;
+		if ( $this->query_urls ) {
+			$id = $this->query_path( $path );
+			if ( null !== $id ) {
+				$this->learned[ $path ] = $id;
+				return $id;
+			}
 		}
+		$map = $this->map();
+		return isset( $map[ $path ] ) ? $map[ $path ] : null;
+	}
 
+	/**
+	 * Up to two attachment_url_to_postid() queries for an upload path; null when the limit is reached.
+	 *
+	 * @param string $path Upload path relative to the uploads folder.
+	 * @return int|null
+	 */
+	private function query_path( string $path ) {
 		$candidates = array( $path );
 		// Images over the big-image threshold are stored as name-scaled.ext while their sizes keep the original name.
 		if ( ! preg_match( '/-scaled\.[A-Za-z0-9]{2,5}$/', $path ) ) {
@@ -362,9 +461,53 @@ class Attachment_Lookup {
 				break;
 			}
 		}
-
-		wp_cache_set( $key, $id, self::CACHE_GROUP, self::CACHE_TTL );
 		return $id;
+	}
+
+	/**
+	 * The saved upload path => attachment id map, read once (one option, not autoloaded).
+	 *
+	 * @return int[]
+	 */
+	protected function map(): array {
+		if ( null !== $this->map ) {
+			return $this->map;
+		}
+		$this->map = array();
+		$saved     = get_option( self::MAP_OPTION, array() );
+		if ( is_array( $saved ) ) {
+			foreach ( $saved as $path => $id ) {
+				if ( is_string( $path ) && '' !== $path && strlen( $path ) <= 255 && is_int( $id ) && $id >= 0 ) {
+					$this->map[ $path ] = $id;
+				}
+			}
+		}
+		return $this->map;
+	}
+
+	/**
+	 * Saves the answers of this instance's URL queries (authenticated
+	 * requests only): a new or refreshed entry goes last, at most MAP_MAX
+	 * entries are kept, the oldest are dropped.
+	 *
+	 * @return void
+	 */
+	private function save_map(): void {
+		if ( ! $this->query_urls || empty( $this->learned ) ) {
+			return;
+		}
+		$map = $this->map();
+		foreach ( $this->learned as $path => $id ) {
+			$path = (string) $path;
+			unset( $map[ $path ] );
+			$map[ $path ] = $id;
+		}
+		$this->learned = array();
+		if ( count( $map ) > self::MAP_MAX ) {
+			$map = array_slice( $map, -self::MAP_MAX, null, true );
+		}
+		$this->map = $map;
+		update_option( self::MAP_OPTION, $map, false );
 	}
 
 	/**

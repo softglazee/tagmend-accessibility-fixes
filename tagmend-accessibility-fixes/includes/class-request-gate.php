@@ -30,12 +30,15 @@ class Request_Gate {
 	/**
 	 * Query args that mark a page-builder editor or preview frame, or a
 	 * WooCommerce AJAX endpoint. Only their presence is checked.
+	 * vcv-editable: the editable frame of Visual Composer Website Builder
+	 * (Helpers\Frontend::isPageEditable() in its public source).
 	 */
 	const BUILDER_ARGS = array(
 		'elementor-preview',
 		'et_fb',
 		'vc_editable',
 		'vc_action',
+		'vcv-editable',
 		'fl_builder',
 		'bricks',
 		'ct_builder',
@@ -244,6 +247,62 @@ class Request_Gate {
 	}
 
 	/**
+	 * Nonce action of a "View original" / "View repaired" link for one page.
+	 * The page's URL hash is part of the action, so a link (and its nonce)
+	 * seen in a log or in analytics opens no other page in an admin view.
+	 *
+	 * @param string $url_hash Hash of the page's normalised URL.
+	 * @return string
+	 */
+	public static function view_nonce_action( string $url_hash ): string {
+		return self::VIEW_ACTION . '|' . $url_hash;
+	}
+
+	/**
+	 * Nonce action of a scan link for one page (see view_nonce_action()).
+	 *
+	 * @param string $url_hash Hash of the page's normalised URL.
+	 * @return string
+	 */
+	public static function scan_nonce_action( string $url_hash ): string {
+		return self::SCAN_ACTION . '|' . $url_hash;
+	}
+
+	/**
+	 * The normalised form of an absolute URL on this site, as stored and
+	 * hashed (blueprint section 11): the same result the gate computes when
+	 * that URL is requested.
+	 *
+	 * @param string $url Absolute URL on this site.
+	 * @return string
+	 */
+	public static function normalised_url_of( string $url ): string {
+		$parts = wp_parse_url( esc_url_raw( $url ) );
+		$path  = is_array( $parts ) && isset( $parts['path'] ) ? $parts['path'] : '/';
+		$query = array();
+		if ( is_array( $parts ) && isset( $parts['query'] ) ) {
+			wp_parse_str( $parts['query'], $query );
+		}
+		$args = array();
+		foreach ( self::URL_ARGS as $key ) {
+			if ( isset( $query[ $key ] ) && is_string( $query[ $key ] ) ) {
+				$args[ $key ] = $query[ $key ];
+			}
+		}
+		return self::normalise_url( $path, $args );
+	}
+
+	/**
+	 * SHA-256 of the normalised form of an absolute URL on this site.
+	 *
+	 * @param string $url Absolute URL on this site.
+	 * @return string
+	 */
+	public static function url_hash_of( string $url ): string {
+		return hash( 'sha256', self::normalised_url_of( $url ) );
+	}
+
+	/**
 	 * The normalised URL of this request: scheme and host of the home URL,
 	 * the request path, and only the p, page_id, paged and product query args
 	 * (blueprint section 11).
@@ -435,8 +494,8 @@ class Request_Gate {
 	}
 
 	/**
-	 * The mode an administrator asked for with a valid nonce, otherwise
-	 * visitor: a scan first, then the two admin views.
+	 * The mode an administrator asked for with a valid nonce for this page,
+	 * otherwise visitor: a scan first, then the two admin views.
 	 *
 	 * @return string
 	 */
@@ -458,7 +517,7 @@ class Request_Gate {
 			return Engine::MODE_VISITOR;
 		}
 		$nonce = isset( $_GET[ self::VIEW_NONCE_ARG ] ) ? sanitize_text_field( wp_unslash( $_GET[ self::VIEW_NONCE_ARG ] ) ) : '';
-		if ( '' === $nonce || ! wp_verify_nonce( $nonce, self::VIEW_ACTION ) ) {
+		if ( '' === $nonce || ! wp_verify_nonce( $nonce, self::view_nonce_action( $this->url_hash() ) ) ) {
 			return Engine::MODE_VISITOR;
 		}
 		return self::VIEWS[ $view ];
@@ -467,7 +526,8 @@ class Request_Gate {
 	/**
 	 * Whether this request is a scan (blueprint section 10.3): the scan arg
 	 * is "1", the user can manage options (checked first), and the scan nonce
-	 * is valid for this user's session. Anything else is an ordinary request.
+	 * is valid for this user's session and for this page (its URL hash is
+	 * part of the nonce action). Anything else is an ordinary request.
 	 *
 	 * @return bool
 	 */
@@ -482,6 +542,6 @@ class Request_Gate {
 			return false;
 		}
 		$nonce = isset( $_GET[ self::SCAN_NONCE_ARG ] ) ? sanitize_text_field( wp_unslash( $_GET[ self::SCAN_NONCE_ARG ] ) ) : '';
-		return '' !== $nonce && false !== wp_verify_nonce( $nonce, self::SCAN_ACTION );
+		return '' !== $nonce && false !== wp_verify_nonce( $nonce, self::scan_nonce_action( $this->url_hash() ) );
 	}
 }

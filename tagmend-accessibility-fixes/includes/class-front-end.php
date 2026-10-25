@@ -279,20 +279,40 @@ class Front_End {
 	 * @return void
 	 */
 	public function on_wp(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Presence check only; the gate checks the capability and the nonce.
-		if ( ! isset( $_GET[ Request_Gate::SCAN_ARG ] ) || Engine::MODE_SCAN !== $this->gate->mode() ) {
+		try {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Presence check only; the gate checks the capability and the nonce.
+			if ( ! isset( $_GET[ Request_Gate::SCAN_ARG ] ) || Engine::MODE_SCAN !== $this->gate->mode() ) {
+				return;
+			}
+			add_filter( 'show_admin_bar', '__return_false', self::ADMIN_BAR_PRIORITY );
+			$this->send_no_cache();
+		} catch ( Throwable $throwable ) {
 			return;
 		}
-		add_filter( 'show_admin_bar', '__return_false', self::ADMIN_BAR_PRIORITY );
-		$this->send_no_cache();
 	}
 
 	/**
-	 * Registers the layers this request needs, after the gate passed.
+	 * Registers the layers this request needs, after the gate passed. Code
+	 * of other plugins runs inside (the softglaze_a11y_should_process filter,
+	 * fixes registered by add-ons); if anything throws, every hook this
+	 * request registered is removed again and the page is served untouched.
 	 *
 	 * @return void
 	 */
 	public function on_template_redirect(): void {
+		try {
+			$this->register_layers();
+		} catch ( Throwable $throwable ) {
+			$this->unregister_layers();
+		}
+	}
+
+	/**
+	 * What on_template_redirect() does.
+	 *
+	 * @return void
+	 */
+	private function register_layers(): void {
 		if ( ! $this->gate->passes() ) {
 			return;
 		}
@@ -366,6 +386,31 @@ class Front_End {
 	}
 
 	/**
+	 * Removes every hook register_layers() may have added on this request.
+	 *
+	 * @return void
+	 */
+	private function unregister_layers(): void {
+		remove_filter( 'language_attributes', array( $this, 'filter_language_attributes' ), self::LANGUAGE_PRIORITY );
+		remove_filter( 'wp_get_attachment_image_attributes', array( $this, 'filter_attachment_image_attributes' ), self::ATTACHMENT_PRIORITY );
+		remove_filter( 'the_content_more_link', array( $this, 'filter_more_link' ), self::MORE_LINK_PRIORITY );
+		remove_filter( 'excerpt_more', array( $this, 'filter_excerpt_more' ), self::MORE_LINK_PRIORITY );
+		remove_action( 'wp_footer', array( $this, 'print_new_tab_note' ), self::FOOTER_PRIORITY );
+		remove_filter( 'wp_nav_menu_args', array( $this, 'filter_nav_menu_args' ), self::NAV_MENU_PRIORITY );
+		remove_action( 'wp_enqueue_scripts', array( $this, 'enqueue_focus_visible' ), self::STYLES_PRIORITY );
+		remove_filter( self::PAGE_FILTER, array( $this, 'filter_page' ), self::PAGE_PRIORITY );
+		remove_action( self::BUFFER_CHECK_HOOK, array( $this, 'confirm_page_pass' ), self::BUFFER_CHECK_PRIORITY );
+		foreach ( self::CONTENT_FILTERS as $hook => $priority ) {
+			remove_filter( $hook, array( $this, 'filter_content' ), $priority );
+		}
+		remove_action( 'wp_body_open', array( $this, 'print_skip_link' ), self::SKIP_LINK_PRIORITY );
+		remove_action( 'shutdown', array( $this, 'record_fallbacks' ), self::SHUTDOWN_PRIORITY );
+		remove_action( 'shutdown', array( $this, 'record_report' ), self::SHUTDOWN_PRIORITY );
+		$this->layers           = array();
+		$this->skip_link_hooked = false;
+	}
+
+	/**
 	 * Scan mode: the page pass when it can run, otherwise the content
 	 * filters. No attribute hook, no printed element and no stylesheet, so
 	 * the response stays the original HTML; the engine analyses every fix and
@@ -410,12 +455,27 @@ class Front_End {
 			$this->skip_link_hooked = false;
 		}
 
-		// Scans and admin views record that they saw content fragments only (never remembered on a visitor request, D8); the Overview reads it.
-		$this->scanner->set_scope( Engine::SCOPE_CONTENT, Report\Scanner::REASON_PAGE_BUFFER_OFF );
-		$mode = $this->gate->mode();
-		if ( Engine::MODE_SCAN === $mode || $this->needs_scope( Engine::SCOPE_CONTENT, Engine::MODE_STATES[ $mode ]['apply'] ) ) {
-			$this->add_content_filters();
+		try {
+			// Scans and admin views record that they saw content fragments only (never remembered on a visitor request, D8); the Overview reads it.
+			$this->scanner->set_scope( Engine::SCOPE_CONTENT, Report\Scanner::REASON_PAGE_BUFFER_OFF );
+			$mode = $this->gate->mode();
+			if ( Engine::MODE_SCAN === $mode || $this->needs_scope( Engine::SCOPE_CONTENT, Engine::MODE_STATES[ $mode ]['apply'] ) ) {
+				$this->add_content_filters();
+			}
+		} catch ( Throwable $throwable ) {
+			return;
 		}
+	}
+
+	/**
+	 * Whether a Layer A callback may change anything: the gate passed and no
+	 * REST dispatch is running inside the request (rest_do_request() during a
+	 * page would otherwise get repaired output).
+	 *
+	 * @return bool
+	 */
+	private function attribute_hooks_allowed(): bool {
+		return $this->gate->passes() && ! $this->gate->is_rest();
 	}
 
 	/**
@@ -426,11 +486,11 @@ class Front_End {
 	 * @return string
 	 */
 	public function filter_language_attributes( $output ) {
-		if ( ! is_string( $output ) || ! $this->gate->passes() ) {
+		if ( ! is_string( $output ) ) {
 			return $output;
 		}
 		try {
-			return $this->repair_language_attributes( $output );
+			return $this->attribute_hooks_allowed() ? $this->repair_language_attributes( $output ) : $output;
 		} catch ( Throwable $throwable ) {
 			return $output;
 		}
@@ -445,10 +505,13 @@ class Front_End {
 	 * @return array
 	 */
 	public function filter_attachment_image_attributes( $attr, $attachment = null ) {
-		if ( ! is_array( $attr ) || ! $this->gate->passes() ) {
+		if ( ! is_array( $attr ) ) {
 			return $attr;
 		}
 		try {
+			if ( ! $this->attribute_hooks_allowed() ) {
+				return $attr;
+			}
 			$fix = $this->product_image_fix();
 			if ( ! $fix instanceof Fixes\Fix_Product_Img_Alt_Name ) {
 				return $attr;
@@ -496,20 +559,24 @@ class Front_End {
 	 * @return void
 	 */
 	public function print_new_tab_note(): void {
-		$fix = $this->registry->get( 'new-tab-note' );
-		if ( $this->new_tab_printed || ! $fix instanceof Fixes\Fix_New_Tab_Note || ! $this->gate->passes() ) {
+		try {
+			$fix = $this->registry->get( 'new-tab-note' );
+			if ( $this->new_tab_printed || ! $fix instanceof Fixes\Fix_New_Tab_Note || ! $this->gate->passes() ) {
+				return;
+			}
+			if ( empty( $this->layers['page'] ) && ! $this->new_tab_used ) {
+				$fix->set_note_available( false );
+				return;
+			}
+			printf(
+				'<span id="%1$s" hidden>%2$s</span>',
+				esc_attr( Fixes\Fix_New_Tab_Note::NOTE_ID ),
+				esc_html( Fixes\Fix_New_Tab_Note::note_text() )
+			);
+			$this->new_tab_printed = true;
+		} catch ( Throwable $throwable ) {
 			return;
 		}
-		if ( empty( $this->layers['page'] ) && ! $this->new_tab_used ) {
-			$fix->set_note_available( false );
-			return;
-		}
-		$this->new_tab_printed = true;
-		printf(
-			'<span id="%1$s" hidden>%2$s</span>',
-			esc_attr( Fixes\Fix_New_Tab_Note::NOTE_ID ),
-			esc_html( Fixes\Fix_New_Tab_Note::note_text() )
-		);
 	}
 
 	/**
@@ -521,23 +588,28 @@ class Front_End {
 	 * @return void
 	 */
 	public function print_skip_link(): void {
-		$fix = $this->registry->get( 'skip-link' );
-		if ( $this->skip_link_done || ! $fix instanceof Fixes\Fix_Skip_Link || ! $this->gate->passes() ) {
+		try {
+			$fix = $this->registry->get( 'skip-link' );
+			if ( $this->skip_link_done || ! $fix instanceof Fixes\Fix_Skip_Link || ! $this->gate->passes() ) {
+				return;
+			}
+			$this->skip_link_done = true;
+			if ( Fixes\Fix_Skip_Link::core_skip_link_active() ) {
+				$fix->set_printer( Fixes\Fix_Skip_Link::PRINTER_CORE );
+				return;
+			}
+			printf(
+				'<a class="%1$s screen-reader-text" href="%2$s">%3$s</a>',
+				esc_attr( Fixes\Fix_Skip_Link::LINK_CLASS ),
+				esc_url( '#' . Fixes\Fix_Skip_Link::TARGET_ID ),
+				esc_html( Fixes\Fix_Skip_Link::link_text() )
+			);
+			// Set only once printed, so a throw while building the link never claims a link that is not there.
+			$fix->set_printer( Fixes\Fix_Skip_Link::PRINTER_PRINTED );
+			wp_enqueue_style( Fixes\Fix_Skip_Link::STYLE_HANDLE, plugins_url( Fixes\Fix_Skip_Link::STYLE_FILE, SOFTGLAZE_A11Y_FILE ), array(), SOFTGLAZE_A11Y_VERSION );
+		} catch ( Throwable $throwable ) {
 			return;
 		}
-		$this->skip_link_done = true;
-		if ( Fixes\Fix_Skip_Link::core_skip_link_active() ) {
-			$fix->set_printer( Fixes\Fix_Skip_Link::PRINTER_CORE );
-			return;
-		}
-		$fix->set_printer( Fixes\Fix_Skip_Link::PRINTER_PRINTED );
-		printf(
-			'<a class="%1$s screen-reader-text" href="%2$s">%3$s</a>',
-			esc_attr( Fixes\Fix_Skip_Link::LINK_CLASS ),
-			esc_url( '#' . Fixes\Fix_Skip_Link::TARGET_ID ),
-			esc_html( Fixes\Fix_Skip_Link::link_text() )
-		);
-		wp_enqueue_style( Fixes\Fix_Skip_Link::STYLE_HANDLE, plugins_url( Fixes\Fix_Skip_Link::STYLE_FILE, SOFTGLAZE_A11Y_FILE ), array(), SOFTGLAZE_A11Y_VERSION );
 	}
 
 	/**
@@ -547,10 +619,13 @@ class Front_End {
 	 * @return array
 	 */
 	public function filter_nav_menu_args( $args ) {
-		if ( ! is_array( $args ) || ! $this->gate->passes() ) {
+		if ( ! is_array( $args ) ) {
 			return $args;
 		}
 		try {
+			if ( ! $this->attribute_hooks_allowed() ) {
+				return $args;
+			}
 			$fix = $this->registry->get( 'nav-labels' );
 			if ( ! $fix instanceof Fixes\Fix_Nav_Labels ) {
 				return $args;
@@ -573,10 +648,14 @@ class Front_End {
 	 * @return void
 	 */
 	public function enqueue_focus_visible(): void {
-		if ( ! $this->gate->passes() ) {
+		try {
+			if ( ! $this->gate->passes() ) {
+				return;
+			}
+			wp_enqueue_style( Fixes\Fix_Focus_Visible::STYLE_HANDLE, plugins_url( Fixes\Fix_Focus_Visible::STYLE_FILE, SOFTGLAZE_A11Y_FILE ), array(), SOFTGLAZE_A11Y_VERSION );
+		} catch ( Throwable $throwable ) {
 			return;
 		}
-		wp_enqueue_style( Fixes\Fix_Focus_Visible::STYLE_HANDLE, plugins_url( Fixes\Fix_Focus_Visible::STYLE_FILE, SOFTGLAZE_A11Y_FILE ), array(), SOFTGLAZE_A11Y_VERSION );
 	}
 
 	/**
@@ -783,14 +862,17 @@ class Front_End {
 	 */
 	protected function engine(): Engine {
 		if ( null === $this->engine ) {
+			$mode         = $this->gate->mode();
 			$this->engine = new Engine(
 				$this->registry->fixes(),
 				$this->states(),
 				array(
-					'max_bytes' => $this->settings->max_bytes(),
-					'max_ms'    => $this->settings->max_ms(),
+					'max_bytes'   => $this->settings->max_bytes(),
+					'max_ms'      => $this->settings->max_ms(),
 					// Report-only checks never run for visitors: their classes are not even loaded then.
-					'checks'    => isset( Engine::MODE_CHECKS[ $this->gate->mode() ] ) ? $this->registry->checks() : array(),
+					'checks'      => isset( Engine::MODE_CHECKS[ $mode ] ) ? $this->registry->checks() : array(),
+					// Image URLs are looked up in the database only in requests the gate verified (scan, admin view); visitors read what those saved.
+					'attachments' => new Attachment_Lookup( Engine::MODE_VISITOR !== $mode ),
 				)
 			);
 		}
@@ -906,9 +988,11 @@ class Front_End {
 	 * After the page pass fell back: hides the skip link F11 printed on this
 	 * request (hidden="", as F11 itself does when no target exists), because
 	 * nothing gave the main content its id. Only our own link is touched: it
-	 * is found by the exact opening tag we printed, must occur exactly once,
-	 * and is edited with the HTML API; on any doubt or error the page is
-	 * returned as it came.
+	 * is found by the exact opening tag we printed (occurring exactly once),
+	 * or, when an earlier callback on the page filter rewrote that tag (a
+	 * minifier dropping quotes, reordered attributes), as the first link that
+	 * carries our class and our href. It is edited with the HTML API; on any
+	 * doubt or error the page is returned as it came.
 	 *
 	 * @param string $html Page as it came to the callback.
 	 * @return string
@@ -921,7 +1005,10 @@ class Front_End {
 		try {
 			$opener = Fixes\Fix_Skip_Link::printed_opener();
 			$at     = strpos( $html, $opener );
-			if ( false === $at || false !== strpos( $html, $opener, $at + 1 ) ) {
+			if ( false === $at ) {
+				return self::hide_skip_link_by_class( $html );
+			}
+			if ( false !== strpos( $html, $opener, $at + 1 ) ) {
 				return $html;
 			}
 			$processor = new WP_HTML_Tag_Processor( $opener );
@@ -939,16 +1026,52 @@ class Front_End {
 	}
 
 	/**
+	 * Hides our skip link found by its class and href rather than by its
+	 * exact opening tag. The link is printed at the start of the body, so the
+	 * search stops early; the class is ours (prefixed), the href our target.
+	 *
+	 * @param string $html Page.
+	 * @return string
+	 */
+	private static function hide_skip_link_by_class( string $html ): string {
+		if ( false === strpos( $html, Fixes\Fix_Skip_Link::LINK_CLASS ) ) {
+			return $html;
+		}
+		$processor = new WP_HTML_Tag_Processor( $html );
+		if (
+			! $processor->next_tag(
+				array(
+					'tag_name'   => 'A',
+					'class_name' => Fixes\Fix_Skip_Link::LINK_CLASS,
+				)
+			)
+			|| '#' . Fixes\Fix_Skip_Link::TARGET_ID !== $processor->get_attribute( 'href' )
+			|| null !== $processor->get_attribute( 'hidden' )
+			|| ! $processor->set_attribute( 'hidden', '' )
+		) {
+			return $html;
+		}
+		$updated = $processor->get_updated_html();
+		if ( substr_count( $updated, '<' ) !== substr_count( $html, '<' ) || substr_count( $updated, '>' ) !== substr_count( $html, '>' ) ) {
+			return $html;
+		}
+		return $updated;
+	}
+
+	/**
 	 * F19 on a more-link string, with the current post's title. Returns the input on any error.
 	 *
 	 * @param mixed $html Markup from the filter.
 	 * @return mixed
 	 */
 	private function label_more_links( $html ) {
-		if ( ! is_string( $html ) || '' === $html || ! $this->gate->passes() ) {
+		if ( ! is_string( $html ) || '' === $html ) {
 			return $html;
 		}
 		try {
+			if ( ! $this->attribute_hooks_allowed() ) {
+				return $html;
+			}
 			$fix = $this->registry->get( 'read-more-context' );
 			if ( ! $fix instanceof Fixes\Fix_Read_More_Context ) {
 				return $html;

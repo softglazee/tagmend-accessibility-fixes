@@ -348,6 +348,8 @@ final class Screen_Fixes {
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
 				<?php wp_nonce_field( self::ACTION, self::NONCE_FIELD ); ?>
 				<?php
+				// A Save button above the 22 fixes as well as below them, so keyboard users need not tab through every card.
+				submit_button( __( 'Save fix states', 'tagmend-accessibility-fixes' ), 'primary', 'submit', true, array( 'id' => 'softglaze-a11y-save-top' ) );
 				foreach ( $this->grouped_fixes() as $group => $fixes ) {
 					$heading_id = 'softglaze-a11y-group-' . $group;
 					?>
@@ -399,7 +401,7 @@ final class Screen_Fixes {
 		);
 		?>
 		<fieldset class="softglaze-a11y-fix-card" id="<?php echo esc_attr( $field_id ); ?>"<?php echo '' !== $description ? ' aria-describedby="' . esc_attr( $field_id . '-what' ) . '"' : ''; ?>>
-			<legend><?php echo esc_html( $label ); ?></legend>
+			<legend><h3 class="softglaze-a11y-fix-title"><?php echo esc_html( $label ); ?></h3></legend>
 			<div class="softglaze-a11y-fix-states">
 				<?php foreach ( $labels as $value => $text ) : ?>
 					<?php $disabled = 'live' === $value && '' !== $reason && 'live' !== $state; ?>
