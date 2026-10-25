@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Naming facts for one element, gathered once by the analyse pass and shared
  * by every fix and check that asks whether a control has a name (F03, F05,
- * F06, F07, F08, F19, F21, R03 to R07). The name follows the order of the
+ * F06, F07, F08, F15, F19, F21, R03 to R07). The name follows the order of the
  * accessible name computation for these elements: aria-labelledby (when at
  * least one id exists), aria-label, the native source (a label for fields,
  * the value or a default for input buttons, the content for links and
@@ -33,14 +33,16 @@ final class Accessible_Name {
 	const KIND_OTHER  = 'other';
 
 	/**
-	 * Attributes read from a link's opener when present (naming, F05, F21).
+	 * Attributes read from a link's opener when present (naming, F05, F15, F21).
 	 */
 	const LINK_ATTRIBUTES = array(
 		'aria-describedby' => true,
+		'aria-hidden'      => true,
 		'aria-label'       => true,
 		'aria-labelledby'  => true,
 		'hidden'           => true,
 		'href'             => true,
+		'tabindex'         => true,
 		'target'           => true,
 		'title'            => true,
 	);
@@ -165,6 +167,14 @@ final class Accessible_Name {
 	 * @var bool
 	 */
 	public $hidden = false;
+
+	/**
+	 * Whether a tracked ancestor carries aria-hidden="true" (the element's own
+	 * attributes aside).
+	 *
+	 * @var bool
+	 */
+	public $in_hidden = false;
 
 	/**
 	 * The element's own frame (links, buttons, role="button" elements) while it

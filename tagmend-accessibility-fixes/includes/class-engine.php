@@ -105,6 +105,7 @@ class Engine {
 		'MAIN'       => false,
 		'SVG'        => false,
 		'FIGURE'     => false,
+		'TABLE'      => false,
 	);
 
 	/**
@@ -282,6 +283,13 @@ class Engine {
 	private $landmarks = false;
 
 	/**
+	 * Whether this run records aria-controls targets (an active fix or check uses them).
+	 *
+	 * @var bool
+	 */
+	private $controls = false;
+
+	/**
 	 * Naming facts of the open links, buttons and role="button" / role="link"
 	 * elements, outermost first.
 	 *
@@ -311,6 +319,13 @@ class Engine {
 	private $listen_all = array();
 
 	/**
+	 * Fixes that see every opener in aria-hidden content (Fix_Base::IN_HIDDEN), for the current run.
+	 *
+	 * @var Fix[]
+	 */
+	private $hidden_listeners = array();
+
+	/**
 	 * Tag => checks listening to it, for the current run.
 	 *
 	 * @var array
@@ -325,13 +340,15 @@ class Engine {
 	private $check_all = array();
 
 	/**
-	 * Tag => fixes, then tag => checks, that see it in the current run (built on first use per tag).
+	 * Tag => fixes, tag => checks, and tag => fixes that see it only in
+	 * aria-hidden content, in the current run (built on first use per tag).
 	 *
 	 * @var array
 	 */
 	private $dispatch = array(
 		'fixes'  => array(),
 		'checks' => array(),
+		'hidden' => array(),
 	);
 
 	/**
@@ -619,20 +636,23 @@ class Engine {
 	 * @return int|null
 	 */
 	private function analyse( string $html, array $fixes, array $checks, $deadline ) {
-		$this->stack           = array();
-		$this->open_tags       = array();
-		$this->collecting      = 0;
-		$this->containers      = array();
-		$this->hidden_open     = 0;
-		$this->names           = false;
-		$this->landmarks       = false;
-		$this->listeners       = array();
-		$this->listen_all      = array();
-		$this->check_listeners = array();
-		$this->check_all       = array();
-		$this->dispatch        = array(
+		$this->stack            = array();
+		$this->open_tags        = array();
+		$this->collecting       = 0;
+		$this->containers       = array();
+		$this->hidden_open      = 0;
+		$this->names            = false;
+		$this->landmarks        = false;
+		$this->controls         = false;
+		$this->listeners        = array();
+		$this->listen_all       = array();
+		$this->hidden_listeners = array();
+		$this->check_listeners  = array();
+		$this->check_all        = array();
+		$this->dispatch         = array(
 			'fixes'  => array(),
 			'checks' => array(),
+			'hidden' => array(),
 		);
 
 		foreach ( $fixes as $fix ) {
@@ -642,6 +662,7 @@ class Engine {
 				$tags            = $fix->tags();
 				$this->names     = $this->names || $fix->uses_names();
 				$this->landmarks = $this->landmarks || $fix->uses_landmarks();
+				$this->controls  = $this->controls || $fix->uses_controls();
 			}
 			if ( empty( $tags ) ) {
 				$this->listen_all[] = $fix;
@@ -651,6 +672,10 @@ class Engine {
 				continue;
 			}
 			foreach ( $tags as $tag ) {
+				if ( Fix_Base::IN_HIDDEN === $tag ) {
+					$this->hidden_listeners[] = $fix;
+					continue;
+				}
 				$this->listeners[ strtoupper( $tag ) ][] = $fix;
 			}
 		}
@@ -659,6 +684,7 @@ class Engine {
 			$tags            = $check->tags();
 			$this->names     = $this->names || $check->uses_names();
 			$this->landmarks = $this->landmarks || $check->uses_landmarks();
+			$this->controls  = $this->controls || $check->uses_controls();
 			if ( empty( $tags ) ) {
 				$this->check_all[] = $check;
 				continue;
@@ -789,6 +815,12 @@ class Engine {
 		if ( $this->landmarks ) {
 			$this->landmark_facts( $processor, $ordinal, $name, $role, $id, $hidden );
 		}
+		if ( $this->controls ) {
+			$controls = $processor->get_attribute( 'aria-controls' );
+			if ( is_string( $controls ) ) {
+				$this->index->add_controls( $controls );
+			}
+		}
 
 		if ( $this->collecting > 0 && ! $hidden ) {
 			$own_label = '';
@@ -851,6 +883,8 @@ class Engine {
 		$element   = null;
 		$listeners = isset( $this->listeners[ $name ] ) || ! empty( $this->listen_all ) ? $this->listeners_for( $name ) : array();
 		$checks    = isset( $this->check_listeners[ $name ] ) || ! empty( $this->check_all ) ? $this->checks_for( $name ) : array();
+		// Read before this element's own frame is pushed, so hidden_open counts its ancestors only.
+		$in_hidden = ! empty( $this->hidden_listeners ) && ( $hidden || $this->hidden_open > 0 ) ? $this->hidden_for( $name ) : array();
 		$ancestors = $this->stack;
 
 		if ( $can_open && ( $tracked || $barrier ) ) {
@@ -879,7 +913,7 @@ class Engine {
 			++$this->innermost( $name )->nested;
 		}
 
-		if ( empty( $listeners ) && empty( $checks ) ) {
+		if ( empty( $listeners ) && empty( $checks ) && empty( $in_hidden ) ) {
 			return;
 		}
 		$this->token->set_opener( $processor, $ordinal, $name, $element, $ancestors );
@@ -887,6 +921,9 @@ class Engine {
 			$this->token->set_accessible( $accessible );
 		}
 		foreach ( $listeners as $fix ) {
+			$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
+		}
+		foreach ( $in_hidden as $fix ) {
 			$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
 		}
 		foreach ( $checks as $check ) {
@@ -927,11 +964,12 @@ class Engine {
 			}
 		}
 
-		$accessible          = new Accessible_Name( $ordinal, $name, $role, $kind, $attributes );
-		$accessible->hidden  = $accessible->hidden || $hidden || $this->hidden_open > 0;
-		$accessible->label   = $this->innermost_open( 'LABEL' );
-		$accessible->article = $this->innermost_open( 'ARTICLE' );
-		$accessible->form    = $this->innermost_open( 'FORM' );
+		$accessible            = new Accessible_Name( $ordinal, $name, $role, $kind, $attributes );
+		$accessible->hidden    = $accessible->hidden || $hidden || $this->hidden_open > 0;
+		$accessible->in_hidden = $this->hidden_open > 0;
+		$accessible->label     = $this->innermost_open( 'LABEL' );
+		$accessible->article   = $this->innermost_open( 'ARTICLE' );
+		$accessible->form      = $this->innermost_open( 'FORM' );
 		if ( null === $accessible->form ) {
 			$accessible->form = $this->innermost_open( 'SEARCH' );
 		}
@@ -1201,6 +1239,26 @@ class Engine {
 	}
 
 	/**
+	 * Fixes that see a tag in aria-hidden content and do not already see it by its name.
+	 *
+	 * @param string $name Upper-case tag name.
+	 * @return Fix[]
+	 */
+	private function hidden_for( string $name ): array {
+		if ( ! isset( $this->dispatch['hidden'][ $name ] ) ) {
+			$by_name = $this->listeners_for( $name );
+			$extra   = array();
+			foreach ( $this->hidden_listeners as $fix ) {
+				if ( ! in_array( $fix, $by_name, true ) ) {
+					$extra[] = $fix;
+				}
+			}
+			$this->dispatch['hidden'][ $name ] = $extra;
+		}
+		return $this->dispatch['hidden'][ $name ];
+	}
+
+	/**
 	 * Checks that see a tag.
 	 *
 	 * @param string $name Upper-case tag name.
@@ -1361,6 +1419,7 @@ class Engine {
 		$this->dispatch    = array(
 			'fixes'  => array(),
 			'checks' => array(),
+			'hidden' => array(),
 		);
 	}
 }

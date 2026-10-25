@@ -108,6 +108,21 @@ final class Document_Index {
 	private $landmarks = array();
 
 	/**
+	 * Ids named by an aria-controls attribute anywhere in the document,
+	 * recorded when a fix or check uses them (Fix_Base::uses_controls()).
+	 *
+	 * @var bool[]
+	 */
+	private $controls = array();
+
+	/**
+	 * Form fields, labels and their id references, shared by F17 and R11; created on first use.
+	 *
+	 * @var Field_Ids|null
+	 */
+	private $field_ids = null;
+
+	/**
 	 * Creates an empty index.
 	 *
 	 * @param string                 $scope       'page' or 'content'.
@@ -338,5 +353,39 @@ final class Document_Index {
 	public function single_main() {
 		$mains = $this->landmarks( 'main' );
 		return 1 === count( $mains ) ? $mains[0] : null;
+	}
+
+	/**
+	 * Records the ids an aria-controls attribute names.
+	 *
+	 * @param string $value The attribute value (a list of ids).
+	 * @return void
+	 */
+	public function add_controls( string $value ): void {
+		foreach ( (array) preg_split( '/\s+/', trim( $value ), -1, PREG_SPLIT_NO_EMPTY ) as $id ) {
+			$this->controls[ (string) $id ] = true;
+		}
+	}
+
+	/**
+	 * Whether an aria-controls attribute names an id.
+	 *
+	 * @param string $id Id value.
+	 * @return bool
+	 */
+	public function is_controlled( string $id ): bool {
+		return isset( $this->controls[ $id ] );
+	}
+
+	/**
+	 * The form-field facts of this document, shared by every fix and check that reads them.
+	 *
+	 * @return Field_Ids
+	 */
+	public function field_ids(): Field_Ids {
+		if ( null === $this->field_ids ) {
+			$this->field_ids = new Field_Ids();
+		}
+		return $this->field_ids;
 	}
 }

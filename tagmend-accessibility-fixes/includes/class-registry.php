@@ -54,7 +54,7 @@ final class Registry {
 			return $this->fixes;
 		}
 
-		// Catalogue order (blueprint section 6). TODO(Phase 4B): F15, F16, F17 after F14.
+		// Catalogue order (blueprint section 6).
 		$bundled = array(
 			new Fixes\Fix_Img_Alt_Library(),
 			new Fixes\Fix_Img_Alt_Empty_Library(),
@@ -70,6 +70,9 @@ final class Registry {
 			new Fixes\Fix_Skip_Link_Target(),
 			new Fixes\Fix_Viewport_Zoom(),
 			new Fixes\Fix_Positive_Tabindex(),
+			new Fixes\Fix_Hidden_Duplicate_Links(),
+			new Fixes\Fix_Aria_Hidden_Focus(),
+			new Fixes\Fix_Duplicate_Field_Ids(),
 			new Fixes\Fix_Nav_Labels(),
 			new Fixes\Fix_Read_More_Context(),
 			new Fixes\Fix_Empty_Heading(),
@@ -110,7 +113,7 @@ final class Registry {
 	 */
 	public function checks(): array {
 		if ( null === $this->checks ) {
-			// R05 is recorded by the fixes that run out of label sources (F05, F06, F07, F08); F11 adds its own R08 finding. TODO(Phase 4B): R10-R13.
+			// R05 is recorded by the fixes that run out of label sources (F05, F06, F07, F08); F11 adds its own R08 finding, F20 its own R02.
 			$this->checks = array(
 				new Checks\Check_Headings(),
 				new Checks\Check_Alt_Quality(),
@@ -119,6 +122,10 @@ final class Registry {
 				new Checks\Check_Ambiguous_Links(),
 				new Checks\Check_Landmarks(),
 				new Checks\Check_Page_Title(),
+				new Checks\Check_Autoplay_Media(),
+				new Checks\Check_Duplicate_Ids(),
+				new Checks\Check_Non_Native_Controls(),
+				new Checks\Check_Tables(),
 			);
 		}
 		return $this->checks;

@@ -71,6 +71,15 @@ abstract class Check_Base {
 	}
 
 	/**
+	 * Whether the check reads aria-controls targets (see Fix_Base::uses_controls()).
+	 *
+	 * @return bool
+	 */
+	public function uses_controls(): bool {
+		return false;
+	}
+
+	/**
 	 * Subset of array( 'content', 'page' ).
 	 *
 	 * @return string[]

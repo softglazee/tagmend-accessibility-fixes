@@ -30,8 +30,16 @@ abstract class Fix_Base implements Fix {
 	const FINISH_ONLY = '#finish';
 
 	/**
+	 * Listed in tags() (alone or with tag names): the fix also sees every
+	 * opener that carries aria-hidden="true" or sits inside such an element,
+	 * whatever its tag (openers only, each one once).
+	 */
+	const IN_HIDDEN = '#aria-hidden';
+
+	/**
 	 * Upper-case tag names whose openers (and tracked closers) this fix sees.
-	 * An empty array means every opener; array( self::FINISH_ONLY ) means none.
+	 * An empty array means every opener; array( self::FINISH_ONLY ) means none;
+	 * self::IN_HIDDEN adds the openers in aria-hidden content.
 	 *
 	 * @return string[]
 	 */
@@ -58,6 +66,17 @@ abstract class Fix_Base implements Fix {
 	 * @return bool
 	 */
 	public function uses_landmarks(): bool {
+		return false;
+	}
+
+	/**
+	 * Whether the fix reads which ids are named by an aria-controls attribute
+	 * anywhere in the document (Document_Index::is_controlled()). The engine
+	 * reads every opener's aria-controls only when an active fix or check asks.
+	 *
+	 * @return bool
+	 */
+	public function uses_controls(): bool {
 		return false;
 	}
 

@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * A frame for one tracked element (links, buttons, labels, forms, articles,
- * headings, landmarks, inline SVG and anything with aria-hidden="true").
+ * headings, landmarks, tables, inline SVG and anything with aria-hidden="true").
  * Text-collecting frames gather the text that names the element.
  */
 final class Element {
