@@ -44,12 +44,21 @@ abstract class Check_Base {
 
 	/**
 	 * Upper-case tag names whose openers (and tracked closers) this check sees.
-	 * An empty array means every opener.
+	 * An empty array means every opener; array( Fix_Base::FINISH_ONLY ) means none.
 	 *
 	 * @return string[]
 	 */
 	public function tags(): array {
 		return array();
+	}
+
+	/**
+	 * Whether the check reads naming facts (see Fix_Base::uses_names()).
+	 *
+	 * @return bool
+	 */
+	public function uses_names(): bool {
+		return false;
 	}
 
 	/**

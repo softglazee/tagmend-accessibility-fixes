@@ -67,6 +67,35 @@ final class Document_Index {
 	 */
 	private $attachments;
 
+	/**
+	 * Naming facts of links, buttons and fields, in document order.
+	 *
+	 * @var Accessible_Name[]
+	 */
+	private $names = array();
+
+	/**
+	 * Id => text of the first element carrying it, for elements whose text the pass collects.
+	 *
+	 * @var string[]
+	 */
+	private $id_text = array();
+
+	/**
+	 * Id => text of the labels whose for attribute names it.
+	 *
+	 * @var string[]
+	 */
+	private $label_text = array();
+
+	/**
+	 * Id => whether the first element carrying it is a menu (nav, or a list
+	 * or container with a menu class or role), recorded when names are used.
+	 *
+	 * @var bool[]
+	 */
+	private $menus = array();
+
 	// TODO(Phase 4A): skip links, main elements and headings for F11, F12 and F20.
 
 	/**
@@ -171,5 +200,97 @@ final class Document_Index {
 	 */
 	public function opener_count(): int {
 		return $this->openers;
+	}
+
+	/**
+	 * Records the naming facts of a link, button or field.
+	 *
+	 * @param Accessible_Name $name Facts.
+	 * @return void
+	 */
+	public function add_name( Accessible_Name $name ): void {
+		$this->names[] = $name;
+	}
+
+	/**
+	 * Naming facts of every link, button and field, in document order.
+	 * Resolved (complete) in Fix_Base::finish().
+	 *
+	 * @return Accessible_Name[]
+	 */
+	public function names(): array {
+		return $this->names;
+	}
+
+	/**
+	 * Records the collected text of an element with an id; the first element wins.
+	 *
+	 * @param string $id   Id value.
+	 * @param string $text Collected text, as found.
+	 * @return void
+	 */
+	public function set_id_text( string $id, string $text ): void {
+		if ( '' !== $id && ! isset( $this->id_text[ $id ] ) ) {
+			$this->id_text[ $id ] = $text;
+		}
+	}
+
+	/**
+	 * Text of the element carrying an id (icon glyphs removed, whitespace
+	 * collapsed), or null when its text was not collected.
+	 *
+	 * @param string $id Id value.
+	 * @return string|null
+	 */
+	public function id_text( string $id ) {
+		return isset( $this->id_text[ $id ] ) ? Element::without_private_use( $this->id_text[ $id ] ) : null;
+	}
+
+	/**
+	 * Adds the collected text of a label whose for attribute names an id.
+	 *
+	 * @param string $id   The for attribute value.
+	 * @param string $text Collected label text, as found.
+	 * @return void
+	 */
+	public function add_label_text( string $id, string $text ): void {
+		if ( '' === $id ) {
+			return;
+		}
+		$this->label_text[ $id ] = isset( $this->label_text[ $id ] ) ? $this->label_text[ $id ] . ' ' . $text : $text;
+	}
+
+	/**
+	 * Text of the labels for an id (icon glyphs removed, whitespace
+	 * collapsed), or null when no label names it.
+	 *
+	 * @param string $id Id value.
+	 * @return string|null
+	 */
+	public function label_text( string $id ) {
+		return isset( $this->label_text[ $id ] ) ? Element::without_private_use( $this->label_text[ $id ] ) : null;
+	}
+
+	/**
+	 * Records whether the first element with an id is a menu.
+	 *
+	 * @param string $id   Id value.
+	 * @param bool   $menu Whether it is a nav element or a menu list.
+	 * @return void
+	 */
+	public function set_menu( string $id, bool $menu ): void {
+		if ( '' !== $id && ! isset( $this->menus[ $id ] ) ) {
+			$this->menus[ $id ] = $menu;
+		}
+	}
+
+	/**
+	 * Whether the element with an id is a nav element or a menu list.
+	 *
+	 * @param string $id Id value.
+	 * @return bool
+	 */
+	public function is_menu( string $id ): bool {
+		return ! empty( $this->menus[ $id ] );
 	}
 }

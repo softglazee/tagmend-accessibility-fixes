@@ -51,12 +51,21 @@ final class Check_Undescribed_Images extends Check_Base {
 	}
 
 	/**
-	 * Images, and the links and buttons around them.
+	 * Images.
 	 *
 	 * @return string[]
 	 */
 	public function tags(): array {
-		return array( 'IMG', 'A', 'BUTTON' );
+		return array( 'IMG' );
+	}
+
+	/**
+	 * Reads whether the link or button around an image is named.
+	 *
+	 * @return bool
+	 */
+	public function uses_names(): bool {
+		return true;
 	}
 
 	/**
@@ -77,11 +86,7 @@ final class Check_Undescribed_Images extends Check_Base {
 	 * @return void
 	 */
 	public function analyse( Token $token, Document_Index $index, Recorder $recorder ): void {
-		if ( $token->is_closer ) {
-			return;
-		}
-		if ( 'IMG' !== $token->name ) {
-			$token->remember_control();
+		if ( $token->is_closer || 'IMG' !== $token->name ) {
 			return;
 		}
 		if ( null !== $token->attr( 'alt' ) || $token->is_presentational() ) {

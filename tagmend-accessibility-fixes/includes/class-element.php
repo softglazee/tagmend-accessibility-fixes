@@ -81,13 +81,51 @@ final class Element {
 	public $data = array();
 
 	/**
-	 * For A and BUTTON frames, filled by Token::remember_control() on the
-	 * opener: 'control' (a link with href, or a button) and 'own_name'
-	 * (a non-empty aria-label, aria-labelledby or title). Null until then.
+	 * Trimmed id attribute value, or ''.
 	 *
-	 * @var array|null
+	 * @var string
 	 */
-	public $control = null;
+	public $id = '';
+
+	/**
+	 * Text found inside this element does not reach the frames around it:
+	 * hidden content, a select's options, an element named by its own
+	 * aria-label (that label stands in for its content).
+	 *
+	 * @var bool
+	 */
+	public $barrier = false;
+
+	/**
+	 * The naming facts of a link, button, field or role="button" element,
+	 * computed once by the engine and shared by every fix. Null for other
+	 * elements and when no active fix or check uses names.
+	 *
+	 * @var Accessible_Name|null
+	 */
+	public $accessible = null;
+
+	/**
+	 * On LABEL frames: the trimmed for attribute value, or ''.
+	 *
+	 * @var string
+	 */
+	public $label_for = '';
+
+	/**
+	 * On FORM and SEARCH frames: whether this is a search form (role="search",
+	 * a search element, or a field named "s" or of type search inside).
+	 *
+	 * @var bool
+	 */
+	public $search = false;
+
+	/**
+	 * On ARTICLE frames: the text of the first heading inside, once it closed.
+	 *
+	 * @var string|null
+	 */
+	public $heading = null;
 
 	/**
 	 * Creates a frame.
@@ -102,6 +140,7 @@ final class Element {
 		$this->ordinal       = $ordinal;
 		$this->collects_text = $collects_text;
 		$this->aria_hidden   = $aria_hidden;
+		$this->barrier       = $aria_hidden;
 	}
 
 	/**
@@ -127,17 +166,15 @@ final class Element {
 	}
 
 	/**
-	 * Whether this is a link with href or a button that has a name from its
-	 * own attributes or its content. Icon-font glyphs (Private Use Area
-	 * characters) do not count as a name. Call after the element closed.
+	 * Whether this is a link with href, a button or a role="button" element
+	 * that has a non-empty accessible name in the original markup (from its
+	 * own attributes or its content; icon-font glyphs do not count). Reliable
+	 * once the analyse pass has ended (in Fix_Base::finish()).
 	 *
 	 * @return bool
 	 */
 	public function is_named_control(): bool {
-		if ( null === $this->control || ! $this->control['control'] ) {
-			return false;
-		}
-		return $this->control['own_name'] || '' !== self::without_private_use( $this->normalized_text() );
+		return null !== $this->accessible && $this->accessible->is_control() && $this->accessible->is_named();
 	}
 
 	/**
@@ -147,7 +184,10 @@ final class Element {
 	 * @return string
 	 */
 	public static function without_private_use( string $text ): string {
-		$text = (string) preg_replace( '/[\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}]/u', '', $text );
+		// Private Use Area characters start with one of these bytes in UTF-8; most text has none.
+		if ( false !== strpbrk( $text, "\xEE\xEF\xF3\xF4" ) ) {
+			$text = (string) preg_replace( '/[\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}]/u', '', $text );
+		}
 		return trim( (string) preg_replace( '/[\s\x{00A0}]+/u', ' ', $text ) );
 	}
 }

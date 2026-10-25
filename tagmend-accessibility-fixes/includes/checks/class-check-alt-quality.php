@@ -66,12 +66,21 @@ final class Check_Alt_Quality extends Check_Base {
 	}
 
 	/**
-	 * Images, the controls around them and figure captions.
+	 * Images and figure captions.
 	 *
 	 * @return string[]
 	 */
 	public function tags(): array {
-		return array( 'IMG', 'A', 'BUTTON', 'FIGURE', 'FIGCAPTION' );
+		return array( 'IMG', 'FIGCAPTION' );
+	}
+
+	/**
+	 * Reads whether the link or button around an image is named.
+	 *
+	 * @return bool
+	 */
+	public function uses_names(): bool {
+		return true;
 	}
 
 	/**
@@ -99,10 +108,6 @@ final class Check_Alt_Quality extends Check_Base {
 					$figure->data[ self::KEY ] = $token->element->normalized_text();
 				}
 			}
-			return;
-		}
-		if ( 'A' === $token->name || 'BUTTON' === $token->name ) {
-			$token->remember_control();
 			return;
 		}
 		if ( 'IMG' !== $token->name || $token->is_presentational() ) {

@@ -19,7 +19,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * passed (blueprint section 2.1):
  *
  * - Layer A, attribute hooks: language_attributes for F10,
- *   wp_get_attachment_image_attributes for F04.
+ *   wp_get_attachment_image_attributes for F04, the_content_more_link and
+ *   excerpt_more for F19; and the hidden new-tab note printed on wp_footer
+ *   for F21.
  * - Layer C, the whole page: a callback on core's
  *   wp_template_enhancement_output_buffer filter (WordPress 6.9+), only when
  *   a fix applied in this mode needs page scope. Core owns the buffer.
@@ -33,17 +35,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Front_End {
 
 	/**
-	 * Layer B hooks and their priorities. Image filters run late, after lazy-load and optimisation plugins.
-	 * TODO(Phase 3): get_search_form and wp_nav_menu.
+	 * Layer B hooks and their priorities. Content, menu, search-form and image filters run late, after other plugins.
 	 */
 	const CONTENT_FILTERS = array(
 		'the_content'                                     => 999,
 		'render_block_core/template-part'                 => 10,
 		'widget_block_content'                            => 10,
 		'widget_text'                                     => 10,
+		'get_search_form'                                 => 999,
+		'wp_nav_menu'                                     => 999,
 		'post_thumbnail_html'                             => 999,
 		'woocommerce_single_product_image_thumbnail_html' => 999,
 	);
+
+	/**
+	 * F19's more-link filters run after a theme's own (default priority).
+	 */
+	const MORE_LINK_PRIORITY = 20;
+
+	/**
+	 * F21's note is printed after the theme's and most plugins' footer output.
+	 */
+	const FOOTER_PRIORITY = 20;
 
 	/**
 	 * F04 runs after WooCommerce's and the theme's own attribute filters.
@@ -137,6 +150,20 @@ class Front_End {
 	private $no_cache = false;
 
 	/**
+	 * Whether a content run applied F21 on this request.
+	 *
+	 * @var bool
+	 */
+	private $new_tab_used = false;
+
+	/**
+	 * Whether the new-tab note was printed on this request.
+	 *
+	 * @var bool
+	 */
+	private $new_tab_printed = false;
+
+	/**
 	 * Creates the wiring.
 	 *
 	 * @param Request_Gate $gate     Request gate.
@@ -190,6 +217,16 @@ class Front_End {
 			$this->layers['attribute'] = true;
 		}
 
+		if ( in_array( $this->state_of( 'read-more-context' ), $applied, true ) && $this->registry->get( 'read-more-context' ) instanceof Fixes\Fix_Read_More_Context ) {
+			add_filter( 'the_content_more_link', array( $this, 'filter_more_link' ), self::MORE_LINK_PRIORITY, 2 );
+			add_filter( 'excerpt_more', array( $this, 'filter_excerpt_more' ), self::MORE_LINK_PRIORITY );
+			$this->layers['attribute'] = true;
+		}
+
+		if ( in_array( $this->state_of( 'new-tab-note' ), $applied, true ) && $this->registry->get( 'new-tab-note' ) instanceof Fixes\Fix_New_Tab_Note ) {
+			add_action( 'wp_footer', array( $this, 'print_new_tab_note' ), self::FOOTER_PRIORITY );
+		}
+
 		if ( $this->page_pass_available() && $this->needs_scope( Engine::SCOPE_PAGE, $applied ) ) {
 			add_filter( self::PAGE_FILTER, array( $this, 'filter_page' ), self::PAGE_PRIORITY, 2 );
 			$this->layers['page'] = true;
@@ -241,6 +278,54 @@ class Front_End {
 		} catch ( Throwable $throwable ) {
 			return $attr;
 		}
+	}
+
+	/**
+	 * Layer A for F19: the "(more…)" link of the_content.
+	 *
+	 * @param string $link Link markup.
+	 * @param string $text Link text (unused; the markup is read).
+	 * @return string
+	 */
+	public function filter_more_link( $link, $text = '' ) {
+		unset( $text );
+		return $this->label_more_links( $link );
+	}
+
+	/**
+	 * Layer A for F19: a theme's excerpt-more string, when it holds a link.
+	 *
+	 * @param string $more The excerpt-more string.
+	 * @return string
+	 */
+	public function filter_excerpt_more( $more ) {
+		return $this->label_more_links( $more );
+	}
+
+	/**
+	 * Prints F21's hidden note once on wp_footer, escaped as it is built:
+	 * always when the whole-page pass runs (it sees the header and footer
+	 * links only after this hook), otherwise only when a content run already
+	 * pointed a link at it. When it is not printed, later content runs stop
+	 * adding references to it.
+	 *
+	 * @return void
+	 */
+	public function print_new_tab_note(): void {
+		$fix = $this->registry->get( 'new-tab-note' );
+		if ( $this->new_tab_printed || ! $fix instanceof Fixes\Fix_New_Tab_Note || ! $this->gate->passes() ) {
+			return;
+		}
+		if ( empty( $this->layers['page'] ) && ! $this->new_tab_used ) {
+			$fix->set_note_available( false );
+			return;
+		}
+		$this->new_tab_printed = true;
+		printf(
+			'<span id="%1$s" hidden>%2$s</span>',
+			esc_attr( Fixes\Fix_New_Tab_Note::NOTE_ID ),
+			esc_html( Fixes\Fix_New_Tab_Note::note_text() )
+		);
 	}
 
 	/**
@@ -361,13 +446,19 @@ class Front_End {
 	 * @return void
 	 */
 	public function reset(): void {
-		$this->engine    = null;
-		$this->states    = null;
-		$this->layers    = array();
-		$this->fallbacks = array();
-		$this->url_hash  = '';
-		$this->engine_ms = 0.0;
-		$this->no_cache  = false;
+		$this->engine          = null;
+		$this->states          = null;
+		$this->layers          = array();
+		$this->fallbacks       = array();
+		$this->url_hash        = '';
+		$this->engine_ms       = 0.0;
+		$this->no_cache        = false;
+		$this->new_tab_used    = false;
+		$this->new_tab_printed = false;
+		$fix                   = $this->registry->get( 'new-tab-note' );
+		if ( $fix instanceof Fixes\Fix_New_Tab_Note ) {
+			$fix->set_note_available( true );
+		}
 	}
 
 	/**
@@ -444,10 +535,33 @@ class Front_End {
 			if ( null !== $reason ) {
 				$this->fallbacks[ sanitize_key( $reason ) ] = true;
 			}
+			$counts = $recorder->counts();
+			$state  = $this->state_of( 'new-tab-note' );
+			if ( ! empty( $counts['new-tab-note'][ $state ] ) ) {
+				$this->new_tab_used = true;
+			}
 			// TODO(Phase 6A): in admin_repaired views, store the recorder's changes and findings for this URL.
 			return $output;
 		} catch ( Throwable $throwable ) {
 			$this->fallbacks['exception'] = true;
+			return $html;
+		}
+	}
+
+	/**
+	 * F19 on a more-link string, with the current post's title. Returns the input on any error.
+	 *
+	 * @param mixed $html Markup from the filter.
+	 * @return mixed
+	 */
+	private function label_more_links( $html ) {
+		if ( ! is_string( $html ) || '' === $html || ! $this->gate->passes() ) {
+			return $html;
+		}
+		try {
+			$fix = $this->registry->get( 'read-more-context' );
+			return $fix instanceof Fixes\Fix_Read_More_Context ? $fix->label_more_links( $html, (string) get_the_title() ) : $html;
+		} catch ( Throwable $throwable ) {
 			return $html;
 		}
 	}

@@ -64,6 +64,13 @@ final class Token {
 	private $ancestors = array();
 
 	/**
+	 * Naming facts of an opener that has no frame (input fields), or null.
+	 *
+	 * @var Accessible_Name|null
+	 */
+	private $accessible = null;
+
+	/**
 	 * Points the token at an opener.
 	 *
 	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
@@ -74,12 +81,23 @@ final class Token {
 	 * @return void
 	 */
 	public function set_opener( WP_HTML_Tag_Processor $processor, int $ordinal, string $name, $element, array $ancestors ): void {
-		$this->processor = $processor;
-		$this->ordinal   = $ordinal;
-		$this->name      = $name;
-		$this->is_closer = false;
-		$this->element   = $element;
-		$this->ancestors = $ancestors;
+		$this->processor  = $processor;
+		$this->ordinal    = $ordinal;
+		$this->name       = $name;
+		$this->is_closer  = false;
+		$this->element    = $element;
+		$this->ancestors  = $ancestors;
+		$this->accessible = null;
+	}
+
+	/**
+	 * Attaches the naming facts of an opener without a frame (the engine calls this).
+	 *
+	 * @param Accessible_Name $accessible Facts.
+	 * @return void
+	 */
+	public function set_accessible( Accessible_Name $accessible ): void {
+		$this->accessible = $accessible;
 	}
 
 	/**
@@ -90,12 +108,13 @@ final class Token {
 	 * @return void
 	 */
 	public function set_closer( Element $element, array $ancestors ): void {
-		$this->processor = null;
-		$this->ordinal   = $element->ordinal;
-		$this->name      = $element->tag;
-		$this->is_closer = true;
-		$this->element   = $element;
-		$this->ancestors = $ancestors;
+		$this->processor  = null;
+		$this->ordinal    = $element->ordinal;
+		$this->name       = $element->tag;
+		$this->is_closer  = true;
+		$this->element    = $element;
+		$this->ancestors  = $ancestors;
+		$this->accessible = null;
 	}
 
 	/**
@@ -104,9 +123,10 @@ final class Token {
 	 * @return void
 	 */
 	public function clear(): void {
-		$this->processor = null;
-		$this->element   = null;
-		$this->ancestors = array();
+		$this->processor  = null;
+		$this->element    = null;
+		$this->ancestors  = array();
+		$this->accessible = null;
 	}
 
 	/**
@@ -149,14 +169,16 @@ final class Token {
 	}
 
 	/**
-	 * The innermost open link or button around the current token.
+	 * The innermost open link, button or role="button" / role="link" element
+	 * around the current token. Its naming facts are on Element::$accessible;
+	 * found only when a fix or check of the run uses names (Fix_Base::uses_names()).
 	 *
 	 * @return Element|null
 	 */
 	public function closest_control() {
 		for ( $i = count( $this->ancestors ) - 1; $i >= 0; $i-- ) {
-			$tag = $this->ancestors[ $i ]->tag;
-			if ( 'A' === $tag || 'BUTTON' === $tag ) {
+			$accessible = $this->ancestors[ $i ]->accessible;
+			if ( null !== $accessible && $accessible->is_container() ) {
 				return $this->ancestors[ $i ];
 			}
 		}
@@ -164,34 +186,12 @@ final class Token {
 	}
 
 	/**
-	 * On an A or BUTTON opener, stores on its frame what naming needs from
-	 * the opener's attributes (Element::$control). Fixes and checks that ask
-	 * Element::is_named_control() call this for A and BUTTON openers; the
-	 * first call wins.
+	 * Naming facts of the current element (links, buttons, fields), or null.
 	 *
-	 * @return void
+	 * @return Accessible_Name|null
 	 */
-	public function remember_control(): void {
-		if ( $this->is_closer || null === $this->processor || null === $this->element || null !== $this->element->control ) {
-			return;
-		}
-		if ( 'A' !== $this->name && 'BUTTON' !== $this->name ) {
-			return;
-		}
-		// Names only: most links carry none of the naming attributes, so no value is decoded for them.
-		$names    = $this->processor->get_attribute_names_with_prefix( '' );
-		$names    = is_array( $names ) ? array_flip( $names ) : array();
-		$own_name = false;
-		foreach ( array( 'aria-label', 'aria-labelledby', 'title' ) as $attribute ) {
-			if ( isset( $names[ $attribute ] ) && '' !== $this->attr_text( $attribute ) ) {
-				$own_name = true;
-				break;
-			}
-		}
-		$this->element->control = array(
-			'control'  => 'BUTTON' === $this->name || isset( $names['href'] ),
-			'own_name' => $own_name,
-		);
+	public function accessible() {
+		return null === $this->element ? $this->accessible : $this->element->accessible;
 	}
 
 	/**

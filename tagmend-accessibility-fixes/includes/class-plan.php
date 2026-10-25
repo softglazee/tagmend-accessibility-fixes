@@ -65,24 +65,26 @@ final class Plan {
 	 * @param int         $priority  Lower wins when fixes propose the same attribute.
 	 * @param string|null $before    Current value, null when absent.
 	 * @param string      $signature Privacy-stripped element signature.
+	 * @param array       $requires  Optional array( ordinal, attribute ) of an earlier element's
+	 *                               edit that must be applied in the same run for this one to be.
 	 * @return bool
 	 */
-	public function add( int $ordinal, string $tag, string $attribute, string $value, string $fix_id, int $priority = 10, $before = null, string $signature = '' ): bool {
+	public function add( int $ordinal, string $tag, string $attribute, string $value, string $fix_id, int $priority = 10, $before = null, string $signature = '', array $requires = array() ): bool {
 		$attribute = strtolower( $attribute );
 		// A stray </br> counts as an opener from WordPress 6.7 but cannot take attributes.
 		if ( $ordinal < 0 || 'BR' === $tag || ! in_array( $attribute, self::ATTRIBUTES, true ) ) {
 			return false;
 		}
 
+		// Ordinal and attribute are the keys; seven entries keep each proposal in the smallest hash.
 		$this->edits[ $ordinal ][ $attribute ][] = array(
-			'ordinal'   => $ordinal,
 			'tag'       => $tag,
-			'attribute' => $attribute,
 			'value'     => $value,
 			'fix'       => $fix_id,
 			'priority'  => $priority,
 			'before'    => is_string( $before ) ? $before : null,
 			'signature' => $signature,
+			'requires'  => 2 === count( $requires ) ? array( (int) $requires[0], strtolower( (string) $requires[1] ) ) : null,
 		);
 		++$this->count;
 		return true;
@@ -128,16 +130,16 @@ final class Plan {
 	}
 
 	/**
-	 * The winning proposal among those whose fix passes the filter.
+	 * The winning proposal among those the filter accepts.
 	 *
 	 * @param array    $proposals Proposals for one attribute of one element.
-	 * @param callable $accept    Receives a fix id, returns bool.
+	 * @param callable $accept    Receives a proposal, returns bool.
 	 * @return array|null
 	 */
 	public static function winner( array $proposals, callable $accept ) {
 		$best = null;
 		foreach ( $proposals as $proposal ) {
-			if ( ! $accept( $proposal['fix'] ) ) {
+			if ( ! $accept( $proposal ) ) {
 				continue;
 			}
 			if ( null === $best || $proposal['priority'] < $best['priority'] ) {

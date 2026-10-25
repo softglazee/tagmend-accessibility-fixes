@@ -54,16 +54,21 @@ final class Registry {
 			return $this->fixes;
 		}
 
-		// Catalogue order (blueprint section 6). TODO(Phase 3): F05, F06, F08, F19, F21. TODO(Phase 4A): F11, F12, F14, F18, F20, F22. TODO(Phase 4B): F15, F16, F17.
+		// Catalogue order (blueprint section 6). TODO(Phase 4A): F11, F12, F14, F18, F20, F22. TODO(Phase 4B): F15, F16, F17.
 		$bundled = array(
 			new Fixes\Fix_Img_Alt_Library(),
 			new Fixes\Fix_Img_Alt_Empty_Library(),
 			new Fixes\Fix_Img_In_Named_Control(),
 			new Fixes\Fix_Product_Img_Alt_Name(),
+			new Fixes\Fix_Link_Name(),
+			new Fixes\Fix_Button_Name(),
 			new Fixes\Fix_Decorative_Icons(),
+			new Fixes\Fix_Field_Label(),
 			new Fixes\Fix_Iframe_Title(),
 			new Fixes\Fix_Html_Lang(),
 			new Fixes\Fix_Viewport_Zoom(),
+			new Fixes\Fix_Read_More_Context(),
+			new Fixes\Fix_New_Tab_Note(),
 		);
 
 		$fixes = array();
@@ -99,10 +104,12 @@ final class Registry {
 	 */
 	public function checks(): array {
 		if ( null === $this->checks ) {
-			// TODO(Phase 3): R05-R07. TODO(Phase 4A): R02, R08, R09. TODO(Phase 4B): R10-R13.
+			// R05 is recorded by the fixes that run out of label sources (F05, F06, F07, F08). TODO(Phase 4A): R02, R08, R09. TODO(Phase 4B): R10-R13.
 			$this->checks = array(
 				new Checks\Check_Alt_Quality(),
 				new Checks\Check_Undescribed_Images(),
+				new Checks\Check_Field_Visible_Label(),
+				new Checks\Check_Ambiguous_Links(),
 			);
 		}
 		return $this->checks;

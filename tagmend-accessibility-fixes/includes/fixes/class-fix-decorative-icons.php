@@ -19,14 +19,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Inside a link or button that has a name of its own, sets aria-hidden="true"
- * on (a) i and span elements that carry an icon-font class and contain
- * nothing but icon glyphs (Private Use Area characters) or nothing at all,
- * or that contain only such glyphs, and on (b) inline SVGs without a title,
+ * Inside a link or button that has a name, sets aria-hidden="true" on (a) i
+ * and span elements that carry an icon-font class and contain nothing but
+ * icon glyphs (Private Use Area characters) or nothing at all, or that
+ * contain only such glyphs, and on (b) inline SVGs without a title,
  * aria-label, aria-labelledby or role (plus focusable="false"). The decision
- * is taken when the control closes, so its name is computed from the original
- * markup. An svg with role="img" and no name is not decorative: it is listed
- * as a finding instead.
+ * is taken in finish(), after F05 and F06 (lower priority numbers): a control
+ * counts as named when its original markup names it, or when F05 or F06
+ * planned an aria-label for it, and then the icon edits depend on that
+ * aria-label being applied in the same run. An svg with role="img" and no
+ * name is not decorative: it is listed as a finding instead.
  */
 final class Fix_Decorative_Icons extends Fix_Base {
 
@@ -41,6 +43,13 @@ final class Fix_Decorative_Icons extends Fix_Base {
 	 * Data key on element frames.
 	 */
 	const KEY = 'decorative-icons';
+
+	/**
+	 * Controls holding icon candidates in this run.
+	 *
+	 * @var Element[]
+	 */
+	private $controls = array();
 
 	/**
 	 * Stable id.
@@ -115,16 +124,34 @@ final class Fix_Decorative_Icons extends Fix_Base {
 	}
 
 	/**
-	 * Controls, icon elements and inline SVG.
+	 * Icon elements and inline SVG.
 	 *
 	 * @return string[]
 	 */
 	public function tags(): array {
-		return array( 'A', 'BUTTON', 'I', 'SPAN', 'SVG' );
+		return array( 'I', 'SPAN', 'SVG' );
 	}
 
 	/**
-	 * Collects icon candidates on their openers and closers and decides when their control closes.
+	 * Reads whether the control around an icon is named.
+	 *
+	 * @return bool
+	 */
+	public function uses_names(): bool {
+		return true;
+	}
+
+	/**
+	 * Forgets the controls of the previous run.
+	 *
+	 * @return void
+	 */
+	public function reset(): void {
+		$this->controls = array();
+	}
+
+	/**
+	 * Collects icon candidates on their openers and closers.
 	 *
 	 * @param Token          $token    Current token.
 	 * @param Document_Index $index    Index.
@@ -134,14 +161,6 @@ final class Fix_Decorative_Icons extends Fix_Base {
 	 */
 	public function analyse( Token $token, Document_Index $index, Plan $plan, Recorder $recorder ): void {
 		switch ( $token->name ) {
-			case 'A':
-			case 'BUTTON':
-				if ( $token->is_closer ) {
-					$this->resolve( $token->element, $plan );
-				} else {
-					$token->remember_control();
-				}
-				return;
 			case 'SVG':
 				if ( $token->is_closer ) {
 					$this->close_svg( $token, $recorder );
@@ -281,6 +300,9 @@ final class Fix_Decorative_Icons extends Fix_Base {
 		if ( null === $control ) {
 			return;
 		}
+		if ( empty( $control->data[ self::KEY ] ) ) {
+			$this->controls[] = $control;
+		}
 		$control->data[ self::KEY ][] = array(
 			'element'   => $element,
 			'svg'       => 'SVG' === $element['tag'],
@@ -289,26 +311,32 @@ final class Fix_Decorative_Icons extends Fix_Base {
 	}
 
 	/**
-	 * Resolve step, when a control closes: hides its icons if the control has a name.
+	 * Resolve step: hides the icons of every named control. A control named
+	 * only by an aria-label that F05 or F06 planned gets its icons hidden only
+	 * when that aria-label is applied in the same run.
 	 *
-	 * @param Element|null $control The closing link or button.
-	 * @param Plan         $plan    Plan.
+	 * @param Document_Index $index    The complete index.
+	 * @param Plan           $plan     Planned edits, including F05's and F06's.
+	 * @param Recorder       $recorder Changes and findings.
 	 * @return void
 	 */
-	private function resolve( $control, Plan $plan ): void {
-		if ( null === $control || empty( $control->data[ self::KEY ] ) ) {
-			return;
-		}
-		// TODO(Phase 3): also treat the control as named when F05/F06 apply an aria-label to it in this mode (read their proposal from the plan), so icons in links and buttons they name are hidden too.
-		if ( ! $control->is_named_control() ) {
-			return;
-		}
-		foreach ( $control->data[ self::KEY ] as $icon ) {
-			$this->plan_at( $plan, $icon['element'], 'aria-hidden', 'true', null );
-			if ( $icon['svg'] && 'false' !== strtolower( (string) $icon['focusable'] ) ) {
-				$this->plan_at( $plan, $icon['element'], 'focusable', 'false', $icon['focusable'] );
+	public function finish( Document_Index $index, Plan $plan, Recorder $recorder ): void {
+		foreach ( $this->controls as $control ) {
+			$requires = array();
+			if ( ! $control->is_named_control() ) {
+				if ( ! $plan->has( $control->ordinal, 'aria-label' ) ) {
+					continue;
+				}
+				$requires = array( $control->ordinal, 'aria-label' );
+			}
+			foreach ( $control->data[ self::KEY ] as $icon ) {
+				$this->plan_at( $plan, $icon['element'], 'aria-hidden', 'true', null, $requires );
+				if ( $icon['svg'] && 'false' !== strtolower( (string) $icon['focusable'] ) ) {
+					$this->plan_at( $plan, $icon['element'], 'focusable', 'false', $icon['focusable'], $requires );
+				}
 			}
 		}
+		$this->controls = array();
 	}
 
 	/**

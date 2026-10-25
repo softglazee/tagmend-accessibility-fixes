@@ -22,6 +22,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * opener predicate and calls set_attribute() at the planned ordinals. Any
  * guard, mismatch or throwable returns the input string unchanged.
  *
+ * When an active fix or check uses names (Fix_Base::uses_names()), the
+ * analyse pass also builds one Accessible_Name per link, button, field and
+ * role="button" element and resolves them after the last token, so every
+ * fix reads the same naming facts instead of working them out again.
+ *
  * The engine has no side effects: it registers no hooks, writes nothing and
  * prints nothing. What happened is in recorder() after each run.
  */
@@ -110,6 +115,33 @@ class Engine {
 		'I'    => true,
 		'SPAN' => true,
 	);
+
+	/**
+	 * Elements that can carry naming facts without a role (Accessible_Name::kind_for()).
+	 */
+	const NAMEABLE = array(
+		'A'        => true,
+		'BUTTON'   => true,
+		'INPUT'    => true,
+		'SELECT'   => true,
+		'TEXTAREA' => true,
+	);
+
+	/**
+	 * Elements inside a link or button that the naming facts count (images,
+	 * SVG) or take icon class names from.
+	 */
+	const CONTROL_PARTS = array(
+		'IMG'  => true,
+		'SVG'  => true,
+		'I'    => true,
+		'SPAN' => true,
+	);
+
+	/**
+	 * At most this many class names of icon elements are kept per control.
+	 */
+	const ICON_CLASS_LIMIT = 24;
 
 	const HEADINGS = array(
 		'H1' => true,
@@ -234,6 +266,28 @@ class Engine {
 	 * @var int
 	 */
 	private $collecting = 0;
+
+	/**
+	 * Whether this run computes naming facts (an active fix or check uses them).
+	 *
+	 * @var bool
+	 */
+	private $names = false;
+
+	/**
+	 * Naming facts of the open links, buttons and role="button" / role="link"
+	 * elements, outermost first.
+	 *
+	 * @var Accessible_Name[]
+	 */
+	private $containers = array();
+
+	/**
+	 * Number of open frames that carry aria-hidden="true".
+	 *
+	 * @var int
+	 */
+	private $hidden_open = 0;
 
 	/**
 	 * Tag => fixes listening to it, for the current run.
@@ -466,7 +520,11 @@ class Engine {
 			return null;
 		}
 
-		$apply = $this->resolve( $mode );
+		// The naming facts and frames are not needed after the fixes' finish(); proposals not after resolve(). Free them early.
+		$this->index = null;
+		$this->token->clear();
+		$apply      = $this->resolve( $mode );
+		$this->plan = null;
 		if ( empty( $apply ) ) {
 			return $html;
 		}
@@ -547,6 +605,9 @@ class Engine {
 		$this->stack           = array();
 		$this->open_tags       = array();
 		$this->collecting      = 0;
+		$this->containers      = array();
+		$this->hidden_open     = 0;
+		$this->names           = false;
 		$this->listeners       = array();
 		$this->listen_all      = array();
 		$this->check_listeners = array();
@@ -556,10 +617,14 @@ class Engine {
 			$tags = array();
 			if ( $fix instanceof Fix_Base ) {
 				$fix->reset();
-				$tags = $fix->tags();
+				$tags        = $fix->tags();
+				$this->names = $this->names || $fix->uses_names();
 			}
 			if ( empty( $tags ) ) {
 				$this->listen_all[] = $fix;
+				continue;
+			}
+			if ( array( Fix_Base::FINISH_ONLY ) === $tags ) {
 				continue;
 			}
 			foreach ( $tags as $tag ) {
@@ -568,9 +633,13 @@ class Engine {
 		}
 		foreach ( $checks as $check ) {
 			$check->reset();
-			$tags = $check->tags();
+			$tags        = $check->tags();
+			$this->names = $this->names || $check->uses_names();
 			if ( empty( $tags ) ) {
 				$this->check_all[] = $check;
+				continue;
+			}
+			if ( array( Fix_Base::FINISH_ONLY ) === $tags ) {
 				continue;
 			}
 			foreach ( $tags as $tag ) {
@@ -627,6 +696,13 @@ class Engine {
 			$this->pop_to( count( $this->stack ) - 1 );
 		}
 
+		// Ids and label[for] targets may appear after the element that uses them: names are complete only now.
+		if ( $this->names ) {
+			foreach ( $this->index->names() as $accessible ) {
+				$accessible->resolve( $this->index );
+			}
+		}
+
 		foreach ( $fixes as $fix ) {
 			if ( $fix instanceof Fix_Base ) {
 				$fix->finish( $this->index, $this->plan, $this->recorder );
@@ -645,7 +721,8 @@ class Engine {
 	}
 
 	/**
-	 * Handles a tag opener: index, implicit closes, text sources, stack, dispatch.
+	 * Handles a tag opener: index, implicit closes, text sources, naming
+	 * facts, stack, dispatch.
 	 *
 	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
 	 * @param int                   $ordinal   Opener ordinal.
@@ -654,12 +731,13 @@ class Engine {
 	 */
 	private function open_tag( WP_HTML_Tag_Processor $processor, int $ordinal, string $name ): void {
 		$id = $processor->get_attribute( 'id' );
-		$this->index->add_opener( $name, is_string( $id ) ? trim( $id ) : '' );
+		$id = is_string( $id ) ? trim( $id ) : '';
+		$this->index->add_opener( $name, $id );
+		$for = '';
 		if ( 'LABEL' === $name ) {
 			$for = $processor->get_attribute( 'for' );
-			if ( is_string( $for ) ) {
-				$this->index->add_label_for( trim( $for ) );
-			}
+			$for = is_string( $for ) ? trim( $for ) : '';
+			$this->index->add_label_for( $for );
 		}
 
 		// The parser closes an open link or button when another one starts, and a heading when a heading starts.
@@ -669,9 +747,34 @@ class Engine {
 			$this->pop_to( count( $this->stack ) - 1 );
 		}
 
-		$in_svg = ! empty( $this->open_tags['SVG'] );
-		if ( $this->collecting > 0 ) {
-			if ( 'IMG' === $name ) {
+		$in_svg      = ! empty( $this->open_tags['SVG'] );
+		$aria_hidden = $processor->get_attribute( 'aria-hidden' );
+		$hidden      = is_string( $aria_hidden ) && 'true' === strtolower( trim( $aria_hidden ) );
+		$barrier     = $hidden;
+		$role        = '';
+		if ( $this->names ) {
+			$role = $processor->get_attribute( 'role' );
+			$role = is_string( $role ) ? strtolower( trim( $role ) ) : '';
+			if ( '' !== $id ) {
+				$this->index->set_menu( $id, self::is_menu( $processor, $name, $role ) );
+			}
+		}
+
+		if ( $this->collecting > 0 && ! $hidden ) {
+			$own_label = '';
+			if ( $this->names ) {
+				$own_label = $processor->get_attribute( 'aria-label' );
+				$own_label = is_string( $own_label ) ? trim( $own_label ) : '';
+				// Hidden content is not part of the name of the control around it.
+				$barrier = '' === $own_label && null !== $processor->get_attribute( 'hidden' );
+			}
+			if ( $barrier ) {
+				$own_label = '';
+			} elseif ( '' !== $own_label ) {
+				// An element's aria-label stands in for its content in the name of the control around it.
+				$this->add_text( ' ' . $own_label . ' ' );
+				$barrier = true;
+			} elseif ( 'IMG' === $name ) {
 				$alt = $processor->get_attribute( 'alt' );
 				if ( is_string( $alt ) ) {
 					$this->add_text( ' ' . $alt . ' ' );
@@ -684,12 +787,32 @@ class Engine {
 			$this->innermost( 'SVG' )->has_svg_title = true;
 		}
 
-		$aria_hidden = $processor->get_attribute( 'aria-hidden' );
-		$hidden      = is_string( $aria_hidden ) && 'true' === strtolower( trim( $aria_hidden ) );
-		$collects    = isset( self::TRACKED[ $name ] ) ? self::TRACKED[ $name ] : null;
-		if ( null === $collects && isset( self::TRACKED_IN_CONTROLS[ $name ] ) && ( ! empty( $this->open_tags['A'] ) || ! empty( $this->open_tags['BUTTON'] ) ) ) {
+		$collects = isset( self::TRACKED[ $name ] ) ? self::TRACKED[ $name ] : null;
+		if ( null === $collects && isset( self::TRACKED_IN_CONTROLS[ $name ] ) && $this->in_control() ) {
 			$collects = true;
 		}
+		$accessible = null;
+		if ( $this->names ) {
+			if ( null === $collects ) {
+				if ( 'button' === $role || 'link' === $role || ( 'SPAN' === $name && '' !== $id ) ) {
+					// Controls by role collect their content; spans with an id are typical aria-labelledby targets.
+					$collects = true;
+				} elseif ( 'SELECT' === $name ) {
+					// Option text is not part of a wrapping label's text.
+					$collects = false;
+					$barrier  = true;
+				} elseif ( 'SEARCH' === $name ) {
+					$collects = false;
+				}
+			}
+			if ( 'button' === $role || 'link' === $role || isset( self::NAMEABLE[ $name ] ) ) {
+				$accessible = $this->name_facts( $processor, $ordinal, $name, $role, $hidden );
+			}
+			if ( isset( self::CONTROL_PARTS[ $name ] ) && $this->in_control() ) {
+				$this->count_control_part( $processor, $name );
+			}
+		}
+
 		$tracked  = null !== $collects;
 		$can_open = ! isset( self::VOID[ $name ] ) && ! isset( self::RAW[ $name ] )
 			&& ! ( ( 'SVG' === $name || $in_svg ) && $processor->has_self_closing_flag() )
@@ -700,12 +823,26 @@ class Engine {
 		$checks    = isset( $this->check_listeners[ $name ] ) || ! empty( $this->check_all ) ? $this->checks_for( $name ) : array();
 		$ancestors = $this->stack;
 
-		if ( $can_open && ( $tracked || $hidden ) ) {
-			$element                  = new Element( $name, $ordinal, true === $collects, $hidden );
+		if ( $can_open && ( $tracked || $barrier ) ) {
+			$element            = new Element( $name, $ordinal, true === $collects, $hidden );
+			$element->barrier   = $barrier;
+			$element->id        = $id;
+			$element->label_for = $for;
+			$element->search    = 'SEARCH' === $name || ( 'FORM' === $name && ( 'search' === $role || ! empty( $this->open_tags['SEARCH'] ) ) );
+			if ( null !== $accessible ) {
+				$element->accessible = $accessible;
+				$accessible->frame   = $element;
+				if ( $accessible->is_container() ) {
+					$this->containers[] = $accessible;
+				}
+			}
 			$this->stack[]            = $element;
 			$this->open_tags[ $name ] = isset( $this->open_tags[ $name ] ) ? $this->open_tags[ $name ] + 1 : 1;
 			if ( $element->collects_text ) {
 				++$this->collecting;
+			}
+			if ( $hidden ) {
+				++$this->hidden_open;
 			}
 		} elseif ( $can_open && ! empty( $this->open_tags[ $name ] ) ) {
 			// An untracked element with the same name as an open frame: its end tag must not close the frame.
@@ -716,12 +853,118 @@ class Engine {
 			return;
 		}
 		$this->token->set_opener( $processor, $ordinal, $name, $element, $ancestors );
+		if ( null !== $accessible ) {
+			$this->token->set_accessible( $accessible );
+		}
 		foreach ( $listeners as $fix ) {
 			$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
 		}
 		foreach ( $checks as $check ) {
 			$check->analyse( $this->token, $this->index, $this->recorder );
 		}
+	}
+
+	/**
+	 * Builds the naming facts of a link, button, field or role="button" /
+	 * role="link" element, once, for every fix and check of the run.
+	 *
+	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
+	 * @param int                   $ordinal   Opener ordinal.
+	 * @param string                $name      Upper-case tag name.
+	 * @param string                $role      Lower-case explicit role, or ''.
+	 * @param bool                  $hidden    Whether the opener carries aria-hidden="true".
+	 * @return Accessible_Name|null
+	 */
+	private function name_facts( WP_HTML_Tag_Processor $processor, int $ordinal, string $name, string $role, bool $hidden ) {
+		// Attribute names first: values are decoded only for the attributes this kind keeps.
+		$present = $processor->get_attribute_names_with_prefix( '' );
+		$present = is_array( $present ) ? array_flip( $present ) : array();
+		$type    = '';
+		if ( 'INPUT' === $name ) {
+			$type = isset( $present['type'] ) ? $processor->get_attribute( 'type' ) : '';
+			$type = is_string( $type ) && '' !== trim( $type ) ? strtolower( trim( $type ) ) : 'text';
+		}
+		$kind = Accessible_Name::kind_for( $name, $role, $type, isset( $present['href'] ) );
+		if ( '' === $kind ) {
+			return null;
+		}
+
+		$attributes = array();
+		foreach ( Accessible_Name::attributes_for( $kind ) as $attribute => $wanted ) {
+			if ( $wanted && isset( $present[ $attribute ] ) ) {
+				$value                    = $processor->get_attribute( $attribute );
+				$attributes[ $attribute ] = is_string( $value ) ? $value : '';
+			}
+		}
+
+		$accessible          = new Accessible_Name( $ordinal, $name, $role, $kind, $attributes );
+		$accessible->hidden  = $accessible->hidden || $hidden || $this->hidden_open > 0;
+		$accessible->label   = $this->innermost_open( 'LABEL' );
+		$accessible->article = $this->innermost_open( 'ARTICLE' );
+		$accessible->form    = $this->innermost_open( 'FORM' );
+		if ( null === $accessible->form ) {
+			$accessible->form = $this->innermost_open( 'SEARCH' );
+		}
+		if ( null !== $accessible->form && ( 'search' === $accessible->type || ( 'INPUT' === $name && 's' === $accessible->attr( 'name' ) ) ) ) {
+			$accessible->form->search = true;
+		}
+		if ( $this->recorder->is_recording() ) {
+			$this->token->set_opener( $processor, $ordinal, $name, null, array() );
+			$accessible->sig = $this->token->signature();
+		}
+		$this->index->add_name( $accessible );
+		return $accessible;
+	}
+
+	/**
+	 * Counts an image or SVG inside the innermost control, and keeps the class
+	 * names of icon elements (i, span, svg) for the label maps.
+	 *
+	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
+	 * @param string                $name      Upper-case tag name.
+	 * @return void
+	 */
+	private function count_control_part( WP_HTML_Tag_Processor $processor, string $name ): void {
+		$control = end( $this->containers );
+		if ( false === $control ) {
+			return;
+		}
+		if ( 'IMG' === $name ) {
+			++$control->images;
+			if ( null === $processor->get_attribute( 'alt' ) ) {
+				++$control->images_without_alt;
+			}
+			return;
+		}
+		if ( 'SVG' === $name ) {
+			++$control->svgs;
+		}
+		$class = $processor->get_attribute( 'class' );
+		if ( ! is_string( $class ) || count( $control->icon_classes ) >= self::ICON_CLASS_LIMIT ) {
+			return;
+		}
+		foreach ( (array) preg_split( '/\s+/', strtolower( $class ), -1, PREG_SPLIT_NO_EMPTY ) as $class_name ) {
+			$control->icon_classes[] = (string) $class_name;
+		}
+	}
+
+	/**
+	 * Whether an element with an id is a nav element or a menu list (for aria-controls targets).
+	 *
+	 * @param WP_HTML_Tag_Processor $processor Processor on the opener.
+	 * @param string                $name      Upper-case tag name.
+	 * @param string                $role      Lower-case explicit role, or ''.
+	 * @return bool
+	 */
+	private static function is_menu( WP_HTML_Tag_Processor $processor, string $name, string $role ): bool {
+		if ( 'NAV' === $name || 'navigation' === $role || 'menu' === $role || 'menubar' === $role ) {
+			return true;
+		}
+		if ( 'UL' !== $name && 'OL' !== $name && 'DIV' !== $name ) {
+			return false;
+		}
+		$class = $processor->get_attribute( 'class' );
+		return is_string( $class ) && 1 === preg_match( '/(?:^|[\s_-])(?:menu|nav|navigation|navbar)(?:$|[\s_-])/i', $class );
 	}
 
 	/**
@@ -761,6 +1004,12 @@ class Engine {
 			if ( $frame->collects_text ) {
 				--$this->collecting;
 			}
+			if ( $frame->aria_hidden ) {
+				--$this->hidden_open;
+			}
+			if ( $this->names ) {
+				$this->closed_for_names( $frame );
+			}
 			$listeners = $this->listeners_for( $frame->tag );
 			$checks    = $this->checks_for( $frame->tag );
 			if ( empty( $listeners ) && empty( $checks ) ) {
@@ -777,17 +1026,64 @@ class Engine {
 	}
 
 	/**
-	 * Appends text to every open frame that collects text.
+	 * What the naming facts learn when a frame closes: the text of elements
+	 * with an id (aria-labelledby targets), label text by for, and the first
+	 * heading of an article.
+	 *
+	 * @param Element $frame The closed frame.
+	 * @return void
+	 */
+	private function closed_for_names( Element $frame ): void {
+		if ( null !== $frame->accessible ) {
+			if ( $frame->accessible->is_container() ) {
+				array_pop( $this->containers );
+			}
+			$frame->accessible->close( $frame->text );
+		}
+		if ( ! $frame->collects_text ) {
+			return;
+		}
+		// Raw text; normalised only when an aria-labelledby or label[for] asks for it.
+		if ( '' !== $frame->id ) {
+			$this->index->set_id_text( $frame->id, $frame->text );
+		}
+		if ( 'LABEL' === $frame->tag && '' !== $frame->label_for ) {
+			$this->index->add_label_text( $frame->label_for, $frame->text );
+		}
+		if ( isset( self::HEADINGS[ $frame->tag ] ) ) {
+			$article = $this->innermost_open( 'ARTICLE' );
+			if ( null !== $article && null === $article->heading ) {
+				$article->heading = Element::without_private_use( $frame->text );
+			}
+		}
+	}
+
+	/**
+	 * Appends text to the open frames that collect text, innermost first,
+	 * stopping after a frame whose content does not count outside it.
 	 *
 	 * @param string $text Decoded text.
 	 * @return void
 	 */
 	private function add_text( string $text ): void {
-		foreach ( $this->stack as $frame ) {
+		for ( $i = count( $this->stack ) - 1; $i >= 0; $i-- ) {
+			$frame = $this->stack[ $i ];
 			if ( $frame->collects_text ) {
 				$frame->add_text( $text );
 			}
+			if ( $frame->barrier ) {
+				return;
+			}
 		}
+	}
+
+	/**
+	 * Whether a link, button or role="button" / role="link" element is open.
+	 *
+	 * @return bool
+	 */
+	private function in_control(): bool {
+		return ! empty( $this->open_tags['A'] ) || ! empty( $this->open_tags['BUTTON'] ) || ! empty( $this->containers );
 	}
 
 	/**
@@ -803,6 +1099,16 @@ class Engine {
 			}
 		}
 		return $this->stack[0];
+	}
+
+	/**
+	 * The innermost open frame with a tag, or null when none is open.
+	 *
+	 * @param string $tag Upper-case tag name.
+	 * @return Element|null
+	 */
+	private function innermost_open( string $tag ) {
+		return empty( $this->open_tags[ $tag ] ) ? null : $this->innermost( $tag );
 	}
 
 	/**
@@ -840,10 +1146,16 @@ class Engine {
 	 */
 	private function resolve( string $mode ): array {
 		$apply_states = self::MODE_STATES[ $mode ]['apply'];
-		$applies      = function ( $fix_id ) use ( $apply_states ) {
-			return in_array( $this->state_of( $fix_id ), $apply_states, true );
+		$done         = array();
+		// A proposal applies when its fix's state applies in this mode and the edit it depends on (an earlier ordinal) was applied.
+		$applies = function ( $proposal ) use ( $apply_states, &$done ) {
+			if ( ! in_array( $this->state_of( $proposal['fix'] ), $apply_states, true ) ) {
+				return false;
+			}
+			$requires = $proposal['requires'];
+			return null === $requires || isset( $done[ $requires[0] ][ $requires[1] ] );
 		};
-		$any          = static function () {
+		$any     = static function () {
 			return true;
 		};
 
@@ -860,6 +1172,7 @@ class Engine {
 				if ( $is_applied ) {
 					$apply[ $ordinal ]['tag']                      = $winner['tag'];
 					$apply[ $ordinal ]['attributes'][ $attribute ] = $winner['value'];
+					$done[ $ordinal ][ $attribute ]                = true;
 					++$applied;
 				}
 			}
@@ -962,10 +1275,12 @@ class Engine {
 	 */
 	private function end_run(): void {
 		$this->token->clear();
-		$this->stack      = array();
-		$this->open_tags  = array();
-		$this->collecting = 0;
-		$this->index      = null;
-		$this->plan       = null;
+		$this->stack       = array();
+		$this->open_tags   = array();
+		$this->collecting  = 0;
+		$this->containers  = array();
+		$this->hidden_open = 0;
+		$this->index       = null;
+		$this->plan        = null;
 	}
 }

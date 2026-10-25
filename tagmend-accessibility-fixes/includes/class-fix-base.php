@@ -24,13 +24,30 @@ abstract class Fix_Base implements Fix {
 	const MAX_TEXT = 150;
 
 	/**
+	 * Returned alone by tags() when a fix needs no tokens: it decides in
+	 * finish() from the index (for example from Document_Index::names()).
+	 */
+	const FINISH_ONLY = '#finish';
+
+	/**
 	 * Upper-case tag names whose openers (and tracked closers) this fix sees.
-	 * An empty array means every opener.
+	 * An empty array means every opener; array( self::FINISH_ONLY ) means none.
 	 *
 	 * @return string[]
 	 */
 	public function tags(): array {
 		return array();
+	}
+
+	/**
+	 * Whether the fix reads naming facts (Element::$accessible,
+	 * Token::closest_control(), Document_Index::names()). The engine computes
+	 * them once per element, and only when an active fix or check asks.
+	 *
+	 * @return bool
+	 */
+	public function uses_names(): bool {
+		return false;
 	}
 
 	/**
@@ -109,13 +126,14 @@ abstract class Fix_Base implements Fix {
 	 * @param string      $attribute Attribute name.
 	 * @param string      $value     Plain text value.
 	 * @param string|null $before    Current value, null when absent.
+	 * @param array       $requires  Optional array( ordinal, attribute ): applied only when that edit is.
 	 * @return bool Whether an edit was planned.
 	 */
-	protected function plan_at( Plan $plan, array $element, string $attribute, string $value, $before ): bool {
+	protected function plan_at( Plan $plan, array $element, string $attribute, string $value, $before, array $requires = array() ): bool {
 		if ( is_string( $before ) && $before === $value ) {
 			return false;
 		}
-		return $plan->add( (int) $element['ordinal'], (string) $element['tag'], $attribute, $value, $this->id(), $this->priority(), $before, (string) $element['sig'] );
+		return $plan->add( (int) $element['ordinal'], (string) $element['tag'], $attribute, $value, $this->id(), $this->priority(), $before, (string) $element['sig'], $requires );
 	}
 
 	/**
