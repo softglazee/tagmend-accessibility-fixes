@@ -288,8 +288,9 @@ final class Fix_Link_Name extends Fix_Base {
 
 	/**
 	 * The bundled icon-class map: class name => label. Labels that are not
-	 * brand names are translated.
-	 * TODO(Phase 5): Astra (ast-*) and Kadence (kadence-*) header icon classes, once confirmed on the theme fixtures.
+	 * brand names are translated. Astra 4.14.1 and Kadence 1.5.2 label their
+	 * own header icons (search, account, cart, social), so no theme classes are
+	 * mapped.
 	 *
 	 * @return string[]
 	 */

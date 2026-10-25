@@ -26,7 +26,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   F22 only enqueues a fixed stylesheet.
  * - Layer C, the whole page: a callback on core's
  *   wp_template_enhancement_output_buffer filter (WordPress 6.9+), only when
- *   a fix applied in this mode needs page scope. Core owns the buffer.
+ *   a fix applied in this mode needs page scope. Core owns the buffer. When
+ *   another plugin stops core from starting it, the request falls back to
+ *   Layer B (confirm_page_pass()).
  * - Layer B, content filters: only when Layer C is not registered and a fix
  *   applied in this mode needs content scope.
  *
@@ -85,6 +87,13 @@ class Front_End {
 	 */
 	const PAGE_FILTER   = 'wp_template_enhancement_output_buffer';
 	const PAGE_PRIORITY = 20;
+
+	/**
+	 * Core starts its template buffer on wp_before_include_template at 1000; the check runs right after.
+	 */
+	const BUFFER_CHECK_HOOK     = 'wp_before_include_template';
+	const BUFFER_CHECK_PRIORITY = 1001;
+	const BUFFER_STARTED_ACTION = 'wp_template_enhancement_output_buffer_started';
 
 	/**
 	 * Later than the default priority, so a theme or language plugin that sets lang wins.
@@ -195,6 +204,13 @@ class Front_End {
 	private $skip_link_done = false;
 
 	/**
+	 * Whether core's template buffer was not started on this request although Layer C was registered.
+	 *
+	 * @var bool
+	 */
+	private $page_pass_vetoed = false;
+
+	/**
 	 * Creates the wiring.
 	 *
 	 * @param Request_Gate $gate     Request gate.
@@ -269,12 +285,10 @@ class Front_End {
 
 		if ( $this->page_pass_available() && $this->needs_scope( Engine::SCOPE_PAGE, $applied ) ) {
 			add_filter( self::PAGE_FILTER, array( $this, 'filter_page' ), self::PAGE_PRIORITY, 2 );
+			add_action( self::BUFFER_CHECK_HOOK, array( $this, 'confirm_page_pass' ), self::BUFFER_CHECK_PRIORITY );
 			$this->layers['page'] = true;
 		} elseif ( $this->needs_scope( Engine::SCOPE_CONTENT, $applied ) ) {
-			foreach ( self::CONTENT_FILTERS as $hook => $priority ) {
-				add_filter( $hook, array( $this, 'filter_content' ), $priority );
-			}
-			$this->layers['content'] = true;
+			$this->add_content_filters();
 		}
 
 		// Our skip link is printed only when the page pass will settle it (target id, or hidden).
@@ -285,6 +299,38 @@ class Front_End {
 
 		if ( ! empty( $this->layers ) ) {
 			add_action( 'shutdown', array( $this, 'record_fallbacks' ), self::SHUTDOWN_PRIORITY );
+		}
+	}
+
+	/**
+	 * Runs right after core tried to start its template buffer. A plugin can
+	 * stop core from starting it through the
+	 * wp_should_output_buffer_template_for_enhancement filter (Elementor 4.3.5
+	 * returns false there on every front-end request), and then Layer C would
+	 * never run. In that case this request falls back to the content filters,
+	 * as on WordPress 6.5-6.8: page-only fixes do not run, and our skip link
+	 * is not printed because nothing would settle it. The other plugin's
+	 * choice is left as it is.
+	 *
+	 * @return void
+	 */
+	public function confirm_page_pass(): void {
+		if ( empty( $this->layers['page'] ) || did_action( self::BUFFER_STARTED_ACTION ) > 0 ) {
+			return;
+		}
+		remove_filter( self::PAGE_FILTER, array( $this, 'filter_page' ), self::PAGE_PRIORITY );
+		unset( $this->layers['page'] );
+		$this->page_pass_vetoed = true;
+
+		if ( $this->skip_link_hooked ) {
+			remove_action( 'wp_body_open', array( $this, 'print_skip_link' ), self::SKIP_LINK_PRIORITY );
+			$this->skip_link_hooked = false;
+		}
+
+		// TODO(Phase 6A): scans on such a site see content fragments only; record the scope in the report.
+		// TODO(Phase 7): tell the administrator on the Overview when scans show that the page pass could not run.
+		if ( $this->needs_scope( Engine::SCOPE_CONTENT, Engine::MODE_STATES[ $this->gate->mode() ]['apply'] ) ) {
+			$this->add_content_filters();
 		}
 	}
 
@@ -507,6 +553,15 @@ class Front_End {
 	}
 
 	/**
+	 * Whether Layer C was registered but core's template buffer was not started on this request.
+	 *
+	 * @return bool
+	 */
+	public function page_pass_vetoed(): bool {
+		return $this->page_pass_vetoed;
+	}
+
+	/**
 	 * Whether this request was marked as not cacheable.
 	 *
 	 * @return bool
@@ -566,6 +621,7 @@ class Front_End {
 		$this->new_tab_printed  = false;
 		$this->skip_link_hooked = false;
 		$this->skip_link_done   = false;
+		$this->page_pass_vetoed = false;
 		$fix                    = $this->registry->get( 'new-tab-note' );
 		if ( $fix instanceof Fixes\Fix_New_Tab_Note ) {
 			$fix->set_note_available( true );
@@ -629,6 +685,18 @@ class Front_End {
 			define( 'DONOTCACHEPAGE', true );
 		}
 		nocache_headers();
+	}
+
+	/**
+	 * Registers the Layer B content filters.
+	 *
+	 * @return void
+	 */
+	private function add_content_filters(): void {
+		foreach ( self::CONTENT_FILTERS as $hook => $priority ) {
+			add_filter( $hook, array( $this, 'filter_content' ), $priority );
+		}
+		$this->layers['content'] = true;
 	}
 
 	/**

@@ -27,8 +27,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * with the visible text (2.5.3 Label in Name). In content and page scope the
  * title is the text of the first heading of the article around the link; in
  * the the_content_more_link and excerpt_more filters (Front_End) it is the
- * current post's title.
- * TODO(Phase 5): block-theme query loops wrap each post in li.wp-block-post rather than article; confirm on the theme fixtures and accept that container too.
+ * current post's title. Core's Read More block already adds the post title
+ * in screen-reader text; a Post Excerpt block's "more" link in a query loop
+ * (li.wp-block-post, no article) is listed by R07 instead.
  */
 final class Fix_Read_More_Context extends Fix_Base {
 
