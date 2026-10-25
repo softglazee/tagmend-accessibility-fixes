@@ -101,6 +101,24 @@ abstract class Fix_Base implements Fix {
 	}
 
 	/**
+	 * Proposes an attribute value for an element seen earlier (fixes that
+	 * decide in finish() or on a closer) unless it already holds.
+	 *
+	 * @param Plan        $plan      Planned edits.
+	 * @param array       $element   Token::snapshot() of the element's opener.
+	 * @param string      $attribute Attribute name.
+	 * @param string      $value     Plain text value.
+	 * @param string|null $before    Current value, null when absent.
+	 * @return bool Whether an edit was planned.
+	 */
+	protected function plan_at( Plan $plan, array $element, string $attribute, string $value, $before ): bool {
+		if ( is_string( $before ) && $before === $value ) {
+			return false;
+		}
+		return $plan->add( (int) $element['ordinal'], (string) $element['tag'], $attribute, $value, $this->id(), $this->priority(), $before, (string) $element['sig'] );
+	}
+
+	/**
 	 * Turns text from a trusted source into plain text for set_attribute():
 	 * character references resolved, tags stripped, whitespace collapsed,
 	 * trimmed and capped. Never pass esc_attr() output here or onward:
@@ -110,7 +128,7 @@ abstract class Fix_Base implements Fix {
 	 * @param int    $max Maximum characters.
 	 * @return string
 	 */
-	protected static function plain_text( string $raw, int $max = self::MAX_TEXT ): string {
+	public static function plain_text( string $raw, int $max = self::MAX_TEXT ): string {
 		$text = $raw;
 		// Resolve references until none are left, so a doubly encoded "&amp;amp;" reads as "&".
 		for ( $round = 0; $round < 3; $round++ ) {

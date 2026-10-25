@@ -166,7 +166,7 @@ final class Screen_Fixes {
 				<div class="notice notice-warning inline" role="status"><p><?php echo esc_html__( 'Some fix states could not be saved and kept their previous value.', 'tagmend-accessibility-fixes' ); ?></p></div>
 			<?php endif; ?>
 			<p><?php echo esc_html__( 'Off: never applied. Preview: applied only when you open a page with "View repaired" in the admin bar. Live: applied for every visitor.', 'tagmend-accessibility-fixes' ); ?></p>
-			<?php // TODO(Phase 7): groups, what each fix changes, "would change N on scanned pages", "Move all Preview fixes to Live", focus on the status message. ?>
+			<?php // TODO(Phase 7): groups, what each fix changes (including why img-alt-empty-library starts Off: the block editor writes alt="" for images left without alt), "would change N on scanned pages", "Move all Preview fixes to Live", focus on the status message. ?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>">
 				<?php wp_nonce_field( self::ACTION, self::NONCE_FIELD ); ?>

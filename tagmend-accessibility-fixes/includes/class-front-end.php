@@ -18,7 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Registers the repair layers on template_redirect, once the request gate has
  * passed (blueprint section 2.1):
  *
- * - Layer A, attribute hooks: language_attributes for F10.
+ * - Layer A, attribute hooks: language_attributes for F10,
+ *   wp_get_attachment_image_attributes for F04.
  * - Layer C, the whole page: a callback on core's
  *   wp_template_enhancement_output_buffer filter (WordPress 6.9+), only when
  *   a fix applied in this mode needs page scope. Core owns the buffer.
@@ -32,15 +33,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Front_End {
 
 	/**
-	 * Layer B hooks and their priorities.
-	 * TODO(Phase 2): post_thumbnail_html and woocommerce_single_product_image_thumbnail_html. TODO(Phase 3): get_search_form and wp_nav_menu.
+	 * Layer B hooks and their priorities. Image filters run late, after lazy-load and optimisation plugins.
+	 * TODO(Phase 3): get_search_form and wp_nav_menu.
 	 */
 	const CONTENT_FILTERS = array(
-		'the_content'                     => 999,
-		'render_block_core/template-part' => 10,
-		'widget_block_content'            => 10,
-		'widget_text'                     => 10,
+		'the_content'                                     => 999,
+		'render_block_core/template-part'                 => 10,
+		'widget_block_content'                            => 10,
+		'widget_text'                                     => 10,
+		'post_thumbnail_html'                             => 999,
+		'woocommerce_single_product_image_thumbnail_html' => 999,
 	);
+
+	/**
+	 * F04 runs after WooCommerce's and the theme's own attribute filters.
+	 */
+	const ATTACHMENT_PRIORITY = 20;
 
 	/**
 	 * Core's template enhancement filter (WordPress 6.9+); our callback runs after core's own at 10.
@@ -176,6 +184,12 @@ class Front_End {
 			$this->layers['attribute'] = true;
 		}
 
+		// states() counts F04 as Off when WooCommerce is not active.
+		if ( in_array( $this->state_of( 'product-img-alt-name' ), $applied, true ) && $this->product_image_fix() instanceof Fixes\Fix_Product_Img_Alt_Name ) {
+			add_filter( 'wp_get_attachment_image_attributes', array( $this, 'filter_attachment_image_attributes' ), self::ATTACHMENT_PRIORITY, 2 );
+			$this->layers['attribute'] = true;
+		}
+
 		if ( $this->page_pass_available() && $this->needs_scope( Engine::SCOPE_PAGE, $applied ) ) {
 			add_filter( self::PAGE_FILTER, array( $this, 'filter_page' ), self::PAGE_PRIORITY, 2 );
 			$this->layers['page'] = true;
@@ -206,6 +220,26 @@ class Front_End {
 			return $this->repair_language_attributes( $output );
 		} catch ( Throwable $throwable ) {
 			return $output;
+		}
+	}
+
+	/**
+	 * Layer A for F04: product name as alt for the product's own images on a
+	 * single product page. Returns the input on any error.
+	 *
+	 * @param array $attr       Attribute values keyed by name.
+	 * @param mixed $attachment The attachment post.
+	 * @return array
+	 */
+	public function filter_attachment_image_attributes( $attr, $attachment = null ) {
+		if ( ! is_array( $attr ) || ! $this->gate->passes() ) {
+			return $attr;
+		}
+		try {
+			$fix = $this->product_image_fix();
+			return $fix instanceof Fixes\Fix_Product_Img_Alt_Name ? $fix->filter_attributes( $attr, $attachment ) : $attr;
+		} catch ( Throwable $throwable ) {
+			return $attr;
 		}
 	}
 
@@ -349,10 +383,20 @@ class Front_End {
 				array(
 					'max_bytes' => $this->settings->max_bytes(),
 					'max_ms'    => $this->settings->max_ms(),
+					'checks'    => $this->registry->checks(),
 				)
 			);
 		}
 		return $this->engine;
+	}
+
+	/**
+	 * The F04 fix object (a test double in tests).
+	 *
+	 * @return Fix|null
+	 */
+	protected function product_image_fix() {
+		return $this->registry->get( 'product-img-alt-name' );
 	}
 
 	/**

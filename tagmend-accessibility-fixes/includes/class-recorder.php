@@ -132,22 +132,27 @@ final class Recorder {
 	/**
 	 * Records something a person needs to look at.
 	 *
-	 * @param string $check     Check or fix id, for example 'R05'.
-	 * @param string $sc        WCAG success criterion.
-	 * @param string $signature Privacy-stripped element signature.
-	 * @param string $detail    Short explanation.
+	 * @param string $check         Check or fix id, for example 'R05'.
+	 * @param string $sc            WCAG success criterion.
+	 * @param string $signature     Privacy-stripped element signature.
+	 * @param string $detail        Short explanation.
+	 * @param int    $attachment_id Media Library attachment the finding is about (for an edit link), 0 when none.
 	 * @return void
 	 */
-	public function add_finding( string $check, string $sc, string $signature, string $detail ): void {
+	public function add_finding( string $check, string $sc, string $signature, string $detail, int $attachment_id = 0 ): void {
 		if ( ! $this->details ) {
 			return;
 		}
-		$this->findings[] = array(
+		$finding = array(
 			'check'  => $check,
 			'sc'     => $sc,
 			'sig'    => $signature,
 			'detail' => self::clip( $detail ),
 		);
+		if ( $attachment_id > 0 ) {
+			$finding['attachment'] = $attachment_id;
+		}
+		$this->findings[] = $finding;
 	}
 
 	/**

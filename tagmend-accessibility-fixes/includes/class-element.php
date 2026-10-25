@@ -81,6 +81,15 @@ final class Element {
 	public $data = array();
 
 	/**
+	 * For A and BUTTON frames, filled by Token::remember_control() on the
+	 * opener: 'control' (a link with href, or a button) and 'own_name'
+	 * (a non-empty aria-label, aria-labelledby or title). Null until then.
+	 *
+	 * @var array|null
+	 */
+	public $control = null;
+
+	/**
 	 * Creates a frame.
 	 *
 	 * @param string $tag           Upper-case tag name.
@@ -115,5 +124,30 @@ final class Element {
 	 */
 	public function normalized_text(): string {
 		return trim( (string) preg_replace( '/[\s\x{00A0}]+/u', ' ', $this->text ) );
+	}
+
+	/**
+	 * Whether this is a link with href or a button that has a name from its
+	 * own attributes or its content. Icon-font glyphs (Private Use Area
+	 * characters) do not count as a name. Call after the element closed.
+	 *
+	 * @return bool
+	 */
+	public function is_named_control(): bool {
+		if ( null === $this->control || ! $this->control['control'] ) {
+			return false;
+		}
+		return $this->control['own_name'] || '' !== self::without_private_use( $this->normalized_text() );
+	}
+
+	/**
+	 * Text with Private Use Area characters (icon-font glyphs) removed, whitespace collapsed and trimmed.
+	 *
+	 * @param string $text Text.
+	 * @return string
+	 */
+	public static function without_private_use( string $text ): string {
+		$text = (string) preg_replace( '/[\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}]/u', '', $text );
+		return trim( (string) preg_replace( '/[\s\x{00A0}]+/u', ' ', $text ) );
 	}
 }

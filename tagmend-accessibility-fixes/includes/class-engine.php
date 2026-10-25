@@ -73,23 +73,42 @@ class Engine {
 	const FLUSH_EVERY = 16;
 
 	/**
+	 * Modes in which the report-only checks run.
+	 */
+	const MODE_CHECKS = array(
+		'admin_repaired' => true,
+		'scan'           => true,
+	);
+
+	/**
 	 * Elements kept on the stack; true when the element collects text for its name.
 	 */
 	const TRACKED = array(
-		'A'       => true,
-		'BUTTON'  => true,
-		'LABEL'   => true,
-		'H1'      => true,
-		'H2'      => true,
-		'H3'      => true,
-		'H4'      => true,
-		'H5'      => true,
-		'H6'      => true,
-		'FORM'    => false,
-		'ARTICLE' => false,
-		'NAV'     => false,
-		'MAIN'    => false,
-		'SVG'     => false,
+		'A'          => true,
+		'BUTTON'     => true,
+		'LABEL'      => true,
+		'H1'         => true,
+		'H2'         => true,
+		'H3'         => true,
+		'H4'         => true,
+		'H5'         => true,
+		'H6'         => true,
+		'FIGCAPTION' => true,
+		'FORM'       => false,
+		'ARTICLE'    => false,
+		'NAV'        => false,
+		'MAIN'       => false,
+		'SVG'        => false,
+		'FIGURE'     => false,
+	);
+
+	/**
+	 * Elements kept on the stack, collecting text, only inside an open link or
+	 * button: where icon fonts sit, so fixes can see what an icon contains.
+	 */
+	const TRACKED_IN_CONTROLS = array(
+		'I'    => true,
+		'SPAN' => true,
 	);
 
 	const HEADINGS = array(
@@ -152,6 +171,20 @@ class Engine {
 	 * @var string[]
 	 */
 	private $states = array();
+
+	/**
+	 * Report-only checks.
+	 *
+	 * @var Check_Base[]
+	 */
+	private $checks = array();
+
+	/**
+	 * Media Library lookups, shared by every run of this engine.
+	 *
+	 * @var Attachment_Lookup
+	 */
+	private $attachments;
 
 	/**
 	 * Size guard in bytes, before the filter.
@@ -217,6 +250,20 @@ class Engine {
 	private $listen_all = array();
 
 	/**
+	 * Tag => checks listening to it, for the current run.
+	 *
+	 * @var array
+	 */
+	private $check_listeners = array();
+
+	/**
+	 * Checks listening to every tag, for the current run.
+	 *
+	 * @var Check_Base[]
+	 */
+	private $check_all = array();
+
+	/**
 	 * Index of the current run.
 	 *
 	 * @var Document_Index|null
@@ -235,7 +282,8 @@ class Engine {
 	 *
 	 * @param Fix[]    $fixes   Fix objects; duplicates by id are ignored.
 	 * @param string[] $states  Fix id => state; missing or unknown states count as 'off'.
-	 * @param array    $options Optional 'max_bytes' (int) and 'max_ms' (number), filterable per run.
+	 * @param array    $options Optional 'max_bytes' (int) and 'max_ms' (number), filterable per run;
+	 *                          'checks' (Check_Base[]) for the report; 'attachments' (Attachment_Lookup).
 	 */
 	public function __construct( array $fixes, array $states = array(), array $options = array() ) {
 		foreach ( $fixes as $fix ) {
@@ -252,10 +300,19 @@ class Engine {
 			$this->states[ $id ] = in_array( $state, self::STATES, true ) ? $state : 'off';
 		}
 
-		$this->max_bytes = isset( $options['max_bytes'] ) ? (int) $options['max_bytes'] : self::DEFAULT_MAX_BYTES;
-		$this->max_ms    = isset( $options['max_ms'] ) ? (float) $options['max_ms'] : (float) self::DEFAULT_MAX_MS;
-		$this->recorder  = new Recorder( false );
-		$this->token     = new Token();
+		if ( isset( $options['checks'] ) && is_array( $options['checks'] ) ) {
+			foreach ( $options['checks'] as $check ) {
+				if ( $check instanceof Check_Base ) {
+					$this->checks[] = $check;
+				}
+			}
+		}
+
+		$this->max_bytes   = isset( $options['max_bytes'] ) ? (int) $options['max_bytes'] : self::DEFAULT_MAX_BYTES;
+		$this->max_ms      = isset( $options['max_ms'] ) ? (float) $options['max_ms'] : (float) self::DEFAULT_MAX_MS;
+		$this->attachments = isset( $options['attachments'] ) && $options['attachments'] instanceof Attachment_Lookup ? $options['attachments'] : new Attachment_Lookup();
+		$this->recorder    = new Recorder( false );
+		$this->token       = new Token();
 	}
 
 	/**
@@ -303,14 +360,15 @@ class Engine {
 			return $html;
 		}
 
-		$fixes = $this->active_fixes( $mode, $scope );
-		if ( empty( $fixes ) ) {
+		$fixes  = $this->active_fixes( $mode, $scope );
+		$checks = $this->active_checks( $mode, $scope );
+		if ( empty( $fixes ) && empty( $checks ) ) {
 			return $html;
 		}
 
 		$start = hrtime( true );
 		try {
-			$output = $this->process( $html, $mode, $scope, $fixes, $start );
+			$output = $this->process( $html, $mode, $scope, $fixes, $checks, $start );
 		} catch ( Throwable $throwable ) {
 			$this->recorder->fallback( 'exception', get_class( $throwable ) );
 			$output = null;
@@ -354,6 +412,15 @@ class Engine {
 	}
 
 	/**
+	 * The Media Library lookup shared by this engine's runs.
+	 *
+	 * @return Attachment_Lookup
+	 */
+	public function attachments(): Attachment_Lookup {
+		return $this->attachments;
+	}
+
+	/**
 	 * Creates the processor for a pass. Both passes read the same input.
 	 *
 	 * @param string $html Input HTML.
@@ -368,14 +435,15 @@ class Engine {
 	/**
 	 * Steps 1 to 5 of blueprint section 3.2. Returns null after recording a fallback.
 	 *
-	 * @param string    $html  Input.
-	 * @param string    $mode  Mode.
-	 * @param string    $scope Scope.
-	 * @param Fix[]     $fixes Active fixes.
-	 * @param int|float $start hrtime() at the start of the run.
+	 * @param string       $html   Input.
+	 * @param string       $mode   Mode.
+	 * @param string       $scope  Scope.
+	 * @param Fix[]        $fixes  Active fixes.
+	 * @param Check_Base[] $checks Active checks.
+	 * @param int|float    $start  hrtime() at the start of the run.
 	 * @return string|null
 	 */
-	private function process( string $html, string $mode, string $scope, array $fixes, $start ) {
+	private function process( string $html, string $mode, string $scope, array $fixes, array $checks, $start ) {
 		$max_bytes = (int) apply_filters( 'softglaze_a11y_max_bytes', $this->max_bytes );
 		$max_ms    = (float) apply_filters( 'softglaze_a11y_max_ms', $this->max_ms );
 
@@ -390,10 +458,10 @@ class Engine {
 		}
 
 		$deadline    = $start + (int) round( $max_ms * 1000000 );
-		$this->index = new Document_Index( $scope, $mode );
+		$this->index = new Document_Index( $scope, $mode, $this->attachments );
 		$this->plan  = new Plan();
 
-		$openers = $this->analyse( $html, $fixes, $deadline );
+		$openers = $this->analyse( $html, $fixes, $checks, $deadline );
 		if ( null === $openers ) {
 			return null;
 		}
@@ -447,19 +515,42 @@ class Engine {
 	}
 
 	/**
+	 * Checks that run in this mode and scope.
+	 *
+	 * @param string $mode  Mode.
+	 * @param string $scope Scope.
+	 * @return Check_Base[]
+	 */
+	private function active_checks( string $mode, string $scope ): array {
+		if ( ! isset( self::MODE_CHECKS[ $mode ] ) ) {
+			return array();
+		}
+		$active = array();
+		foreach ( $this->checks as $check ) {
+			if ( in_array( $scope, $check->scopes(), true ) ) {
+				$active[] = $check;
+			}
+		}
+		return $active;
+	}
+
+	/**
 	 * The analyse pass. Returns the opener count, or null after recording a fallback.
 	 *
-	 * @param string    $html     Input.
-	 * @param Fix[]     $fixes    Active fixes.
-	 * @param int|float $deadline hrtime() value after which the run gives up.
+	 * @param string       $html     Input.
+	 * @param Fix[]        $fixes    Active fixes.
+	 * @param Check_Base[] $checks   Active checks.
+	 * @param int|float    $deadline hrtime() value after which the run gives up.
 	 * @return int|null
 	 */
-	private function analyse( string $html, array $fixes, $deadline ) {
-		$this->stack      = array();
-		$this->open_tags  = array();
-		$this->collecting = 0;
-		$this->listeners  = array();
-		$this->listen_all = array();
+	private function analyse( string $html, array $fixes, array $checks, $deadline ) {
+		$this->stack           = array();
+		$this->open_tags       = array();
+		$this->collecting      = 0;
+		$this->listeners       = array();
+		$this->listen_all      = array();
+		$this->check_listeners = array();
+		$this->check_all       = array();
 
 		foreach ( $fixes as $fix ) {
 			$tags = array();
@@ -473,6 +564,17 @@ class Engine {
 			}
 			foreach ( $tags as $tag ) {
 				$this->listeners[ strtoupper( $tag ) ][] = $fix;
+			}
+		}
+		foreach ( $checks as $check ) {
+			$check->reset();
+			$tags = $check->tags();
+			if ( empty( $tags ) ) {
+				$this->check_all[] = $check;
+				continue;
+			}
+			foreach ( $tags as $tag ) {
+				$this->check_listeners[ strtoupper( $tag ) ][] = $check;
 			}
 		}
 
@@ -530,6 +632,9 @@ class Engine {
 				$fix->finish( $this->index, $this->plan, $this->recorder );
 			}
 		}
+		foreach ( $checks as $check ) {
+			$check->finish( $this->index, $this->recorder );
+		}
 
 		if ( hrtime( true ) > $deadline ) {
 			$this->recorder->fallback( 'time' );
@@ -581,17 +686,22 @@ class Engine {
 
 		$aria_hidden = $processor->get_attribute( 'aria-hidden' );
 		$hidden      = is_string( $aria_hidden ) && 'true' === strtolower( trim( $aria_hidden ) );
-		$tracked     = isset( self::TRACKED[ $name ] );
-		$can_open    = ! isset( self::VOID[ $name ] ) && ! isset( self::RAW[ $name ] )
+		$collects    = isset( self::TRACKED[ $name ] ) ? self::TRACKED[ $name ] : null;
+		if ( null === $collects && isset( self::TRACKED_IN_CONTROLS[ $name ] ) && ( ! empty( $this->open_tags['A'] ) || ! empty( $this->open_tags['BUTTON'] ) ) ) {
+			$collects = true;
+		}
+		$tracked  = null !== $collects;
+		$can_open = ! isset( self::VOID[ $name ] ) && ! isset( self::RAW[ $name ] )
 			&& ! ( ( 'SVG' === $name || $in_svg ) && $processor->has_self_closing_flag() )
 			&& ! ( 'FORM' === $name && ! empty( $this->open_tags['FORM'] ) );
 
 		$element   = null;
 		$listeners = isset( $this->listeners[ $name ] ) || ! empty( $this->listen_all ) ? $this->listeners_for( $name ) : array();
+		$checks    = isset( $this->check_listeners[ $name ] ) || ! empty( $this->check_all ) ? $this->checks_for( $name ) : array();
 		$ancestors = $this->stack;
 
 		if ( $can_open && ( $tracked || $hidden ) ) {
-			$element                  = new Element( $name, $ordinal, $tracked && self::TRACKED[ $name ], $hidden );
+			$element                  = new Element( $name, $ordinal, true === $collects, $hidden );
 			$this->stack[]            = $element;
 			$this->open_tags[ $name ] = isset( $this->open_tags[ $name ] ) ? $this->open_tags[ $name ] + 1 : 1;
 			if ( $element->collects_text ) {
@@ -602,12 +712,15 @@ class Engine {
 			++$this->innermost( $name )->nested;
 		}
 
-		if ( empty( $listeners ) ) {
+		if ( empty( $listeners ) && empty( $checks ) ) {
 			return;
 		}
 		$this->token->set_opener( $processor, $ordinal, $name, $element, $ancestors );
 		foreach ( $listeners as $fix ) {
 			$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
+		}
+		foreach ( $checks as $check ) {
+			$check->analyse( $this->token, $this->index, $this->recorder );
 		}
 	}
 
@@ -649,12 +762,16 @@ class Engine {
 				--$this->collecting;
 			}
 			$listeners = $this->listeners_for( $frame->tag );
-			if ( empty( $listeners ) ) {
+			$checks    = $this->checks_for( $frame->tag );
+			if ( empty( $listeners ) && empty( $checks ) ) {
 				continue;
 			}
 			$this->token->set_closer( $frame, $this->stack );
 			foreach ( $listeners as $fix ) {
 				$fix->analyse( $this->token, $this->index, $this->plan, $this->recorder );
+			}
+			foreach ( $checks as $check ) {
+				$check->analyse( $this->token, $this->index, $this->recorder );
 			}
 		}
 	}
@@ -699,6 +816,19 @@ class Engine {
 			return empty( $this->listen_all ) ? $this->listeners[ $name ] : array_merge( $this->listeners[ $name ], $this->listen_all );
 		}
 		return $this->listen_all;
+	}
+
+	/**
+	 * Checks that see a tag.
+	 *
+	 * @param string $name Upper-case tag name.
+	 * @return Check_Base[]
+	 */
+	private function checks_for( string $name ): array {
+		if ( isset( $this->check_listeners[ $name ] ) ) {
+			return empty( $this->check_all ) ? $this->check_listeners[ $name ] : array_merge( $this->check_listeners[ $name ], $this->check_all );
+		}
+		return $this->check_all;
 	}
 
 	/**

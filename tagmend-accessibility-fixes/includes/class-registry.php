@@ -38,6 +38,13 @@ final class Registry {
 	private $fixes = null;
 
 	/**
+	 * Report-only checks, built on first use.
+	 *
+	 * @var Check_Base[]|null
+	 */
+	private $checks = null;
+
+	/**
 	 * All registered fixes, by id, bundled ones first.
 	 *
 	 * @return Fix[]
@@ -47,8 +54,13 @@ final class Registry {
 			return $this->fixes;
 		}
 
-		// TODO(Phase 2): F01-F04 and F07. TODO(Phase 3): F05, F06, F08, F19, F21. TODO(Phase 4A): F11, F12, F14, F18, F20, F22. TODO(Phase 4B): F15, F16, F17.
+		// Catalogue order (blueprint section 6). TODO(Phase 3): F05, F06, F08, F19, F21. TODO(Phase 4A): F11, F12, F14, F18, F20, F22. TODO(Phase 4B): F15, F16, F17.
 		$bundled = array(
+			new Fixes\Fix_Img_Alt_Library(),
+			new Fixes\Fix_Img_Alt_Empty_Library(),
+			new Fixes\Fix_Img_In_Named_Control(),
+			new Fixes\Fix_Product_Img_Alt_Name(),
+			new Fixes\Fix_Decorative_Icons(),
 			new Fixes\Fix_Iframe_Title(),
 			new Fixes\Fix_Html_Lang(),
 			new Fixes\Fix_Viewport_Zoom(),
@@ -77,6 +89,23 @@ final class Registry {
 
 		$this->fixes = $fixes;
 		return $this->fixes;
+	}
+
+	/**
+	 * The report-only checks (blueprint section 7), run in scans and admin views.
+	 * Not filterable: section 17 defines no hook for checks.
+	 *
+	 * @return Check_Base[]
+	 */
+	public function checks(): array {
+		if ( null === $this->checks ) {
+			// TODO(Phase 3): R05-R07. TODO(Phase 4A): R02, R08, R09. TODO(Phase 4B): R10-R13.
+			$this->checks = array(
+				new Checks\Check_Alt_Quality(),
+				new Checks\Check_Undescribed_Images(),
+			);
+		}
+		return $this->checks;
 	}
 
 	/**

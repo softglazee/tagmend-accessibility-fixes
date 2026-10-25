@@ -82,7 +82,7 @@ final class Command {
 		}
 
 		$plugin = Plugin::instance();
-		$engine = new Engine( $plugin->registry()->fixes(), $plugin->settings()->fix_states() );
+		$engine = new Engine( $plugin->registry()->fixes(), $plugin->settings()->fix_states(), array( 'checks' => $plugin->registry()->checks() ) );
 		$engine->run( $html, Engine::MODE_SCAN, $scope );
 		// TODO(Phase 6A): --url and --save record the result as a report with source "cli".
 		$result = $engine->recorder()->to_array();
@@ -121,9 +121,19 @@ final class Command {
 			\WP_CLI\Utils\format_items( 'table', $rows, array( 'fix', 'state', 'element', 'attribute', 'before', 'after' ) );
 		}
 
-		WP_CLI::line( sprintf( 'Findings: %d', count( $result['findings'] ) ) );
-		if ( ! empty( $result['findings'] ) ) {
-			\WP_CLI\Utils\format_items( 'table', $result['findings'], array( 'check', 'sc', 'sig', 'detail' ) );
+		$findings = array();
+		foreach ( $result['findings'] as $finding ) {
+			$findings[] = array(
+				'check'      => $finding['check'],
+				'sc'         => $finding['sc'],
+				'element'    => $finding['sig'],
+				'attachment' => isset( $finding['attachment'] ) ? $finding['attachment'] : '',
+				'detail'     => $finding['detail'],
+			);
+		}
+		WP_CLI::line( sprintf( 'Findings: %d', count( $findings ) ) );
+		if ( ! empty( $findings ) ) {
+			\WP_CLI\Utils\format_items( 'table', $findings, array( 'check', 'sc', 'element', 'attachment', 'detail' ) );
 		}
 	}
 

@@ -149,6 +149,87 @@ final class Token {
 	}
 
 	/**
+	 * The innermost open link or button around the current token.
+	 *
+	 * @return Element|null
+	 */
+	public function closest_control() {
+		for ( $i = count( $this->ancestors ) - 1; $i >= 0; $i-- ) {
+			$tag = $this->ancestors[ $i ]->tag;
+			if ( 'A' === $tag || 'BUTTON' === $tag ) {
+				return $this->ancestors[ $i ];
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * On an A or BUTTON opener, stores on its frame what naming needs from
+	 * the opener's attributes (Element::$control). Fixes and checks that ask
+	 * Element::is_named_control() call this for A and BUTTON openers; the
+	 * first call wins.
+	 *
+	 * @return void
+	 */
+	public function remember_control(): void {
+		if ( $this->is_closer || null === $this->processor || null === $this->element || null !== $this->element->control ) {
+			return;
+		}
+		if ( 'A' !== $this->name && 'BUTTON' !== $this->name ) {
+			return;
+		}
+		// Names only: most links carry none of the naming attributes, so no value is decoded for them.
+		$names    = $this->processor->get_attribute_names_with_prefix( '' );
+		$names    = is_array( $names ) ? array_flip( $names ) : array();
+		$own_name = false;
+		foreach ( array( 'aria-label', 'aria-labelledby', 'title' ) as $attribute ) {
+			if ( isset( $names[ $attribute ] ) && '' !== $this->attr_text( $attribute ) ) {
+				$own_name = true;
+				break;
+			}
+		}
+		$this->element->control = array(
+			'control'  => 'BUTTON' === $this->name || isset( $names['href'] ),
+			'own_name' => $own_name,
+		);
+	}
+
+	/**
+	 * Whether the current opener carries aria-hidden="true".
+	 *
+	 * @return bool
+	 */
+	public function is_aria_hidden(): bool {
+		return 'true' === strtolower( $this->attr_text( 'aria-hidden' ) );
+	}
+
+	/**
+	 * Whether the current opener is already out of the accessibility tree:
+	 * role none or presentation, or aria-hidden="true" on it or an ancestor.
+	 *
+	 * @return bool
+	 */
+	public function is_presentational(): bool {
+		$role = strtolower( $this->attr_text( 'role' ) );
+		return 'presentation' === $role || 'none' === $role || $this->is_aria_hidden() || $this->inside_aria_hidden();
+	}
+
+	/**
+	 * What a fix needs to plan an edit on this opener later: ordinal, tag and,
+	 * when the run keeps details, the privacy-stripped signature.
+	 *
+	 * @param bool $with_signature Whether to build the signature.
+	 * @return array
+	 */
+	public function snapshot( bool $with_signature ): array {
+		return array(
+			'ordinal' => $this->ordinal,
+			'tag'     => $this->name,
+			'sig'     => $with_signature ? $this->signature() : '',
+		);
+	}
+
+	/**
 	 * Whether any open tracked ancestor carries aria-hidden="true".
 	 *
 	 * @return bool

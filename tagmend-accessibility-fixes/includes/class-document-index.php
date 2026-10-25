@@ -60,18 +60,37 @@ final class Document_Index {
 	 */
 	private $openers = 0;
 
-	// TODO(Phase 2): attachment ids collected for one batched alt lookup (blueprint section 3.6).
+	/**
+	 * Attachment ids and upload URLs found in the document, loaded in one batch.
+	 *
+	 * @var Attachment_Lookup
+	 */
+	private $attachments;
+
 	// TODO(Phase 4A): skip links, main elements and headings for F11, F12 and F20.
 
 	/**
 	 * Creates an empty index.
 	 *
-	 * @param string $scope 'page' or 'content'.
-	 * @param string $mode  Engine mode.
+	 * @param string                 $scope       'page' or 'content'.
+	 * @param string                 $mode        Engine mode.
+	 * @param Attachment_Lookup|null $attachments Lookup shared by the engine's runs; a new one when null.
 	 */
-	public function __construct( string $scope, string $mode ) {
-		$this->scope = $scope;
-		$this->mode  = $mode;
+	public function __construct( string $scope, string $mode, $attachments = null ) {
+		$this->scope       = $scope;
+		$this->mode        = $mode;
+		$this->attachments = $attachments instanceof Attachment_Lookup ? $attachments : new Attachment_Lookup();
+	}
+
+	/**
+	 * The attachment lookup. Fixes request ids and URLs while the pass runs
+	 * and call load() in finish() before reading any alt text; the first call
+	 * loads everything in one batch, later calls only what is new.
+	 *
+	 * @return Attachment_Lookup
+	 */
+	public function attachments(): Attachment_Lookup {
+		return $this->attachments;
 	}
 
 	/**
