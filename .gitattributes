@@ -1,0 +1,25 @@
+* text=auto eol=lf
+
+# Windows PowerShell 5.1 script
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.webm binary
+*.zip binary
+*.phar binary
+*.mo binary
+
+# Captured pages and the engine's expected output are compared byte for byte.
+/tests/fixtures/** -text
+
+# Development files stay out of git archive exports.
+/.github export-ignore
+/tests export-ignore
+/tools export-ignore
+/phpcs.xml.dist export-ignore
+/phpunit.xml.dist export-ignore
+/composer.json export-ignore
+/composer.lock export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore

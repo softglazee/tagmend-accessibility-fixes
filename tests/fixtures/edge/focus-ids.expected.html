@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Focus and ids edge cases</title>
+</head>
+<body>
+<a class="skip-link screen-reader-text" href="#main">Skip to content</a>
+<header>
+<button class="menu-toggle" aria-controls="site-menu" aria-expanded="false">Menu</button>
+<div id="site-menu" class="site-header-menu" aria-hidden="true"><a href="http://localhost:8730/visit/">Visit</a> <a href="http://localhost:8730/order/">Order</a></div>
+</header>
+<main id="main">
+<h1>Focus and ids</h1>
+
+<section id="f15">
+<h2>Hidden duplicate links</h2>
+<article class="card"><a tabindex="-1" href="http://localhost:8730/menu/croissant/" aria-hidden="true"><img src="http://localhost:8730/photos/croissant.jpg" alt=""></a><h3><a href="http://localhost:8730/menu/croissant/">Croissant</a></h3></article>
+<div class="card"><a tabindex="-1" href="http://localhost:8730/menu/baguette/" aria-hidden="true"><img src="http://localhost:8730/photos/baguette.jpg" alt=""></a><p>Crisp crust.</p><h3><a href="http://localhost:8730/menu/baguette/">Baguette</a></h3></div>
+<article class="card"><a tabindex="-1" href="http://localhost:8730/menu/far/" aria-hidden="true"><img src="http://localhost:8730/photos/far.jpg" alt=""></a><ul><li><b>1</b></li><li><b>2</b></li><li><b>3</b></li><li><b>4</b></li><li><b>5</b></li><li><b>6</b></li></ul><p><a href="http://localhost:8730/menu/far/">Far Breton</a></p></article>
+<div class="card"><a href="http://localhost:8730/menu/kouign/" aria-hidden="true"><img src="http://localhost:8730/photos/kouign.jpg" alt=""></a><ul><li><b>1</b></li><li><b>2</b></li><li><b>3</b></li><li><b>4</b></li><li><b>5</b></li><li><b>6</b></li></ul><p><a href="http://localhost:8730/menu/kouign/">Kouign-amann</a></p></div>
+<div class="card"><a href="http://localhost:8730/menu/cake/" aria-hidden="true" tabindex="-1"><img src="http://localhost:8730/photos/cake.jpg" alt=""></a> <a href="http://localhost:8730/menu/cake/">Cake</a></div>
+<div class="card"><a href="http://localhost:8730/menu/lonely/" aria-hidden="true"><img src="http://localhost:8730/photos/lonely.jpg" alt=""></a></div>
+<div class="card"><a href="http://localhost:8730/menu/rolls/" aria-hidden="true"><img src="http://localhost:8730/photos/rolls.jpg" alt=""></a> <a href="http://localhost:8730/menu/rolls/" tabindex="-1">Rolls</a></div>
+<div class="card"><a href="http://localhost:8730/menu/tart/" aria-hidden="true"><img src="http://localhost:8730/photos/tart.jpg" alt=""></a> <a href="http://localhost:8730/menu/tart/"><img src="http://localhost:8730/photos/tart-2.jpg" alt=""></a></div>
+<div class="card"><a href="#" aria-hidden="true">Top</a> <a href="#">Back to top</a></div>
+</section>
+
+<section id="f16">
+<h2>Focusable elements in hidden content</h2>
+<div class="promo-banner" aria-hidden="true"><a tabindex="-1" href="http://localhost:8730/offers/">Offers</a> <button tabindex="-1" type="button">Dismiss</button> <input tabindex="-1" type="text" name="promo-code"> <input type="hidden" name="h" value="1"> <button type="button" disabled>Disabled</button> <span tabindex="-1">Focusable span</span> <a href="http://localhost:8730/out/" tabindex="-1">Already out</a> <a>No href</a> <iframe tabindex="-1" title="Tour" src="about:blank"></iframe></div>
+<div class="decor" aria-hidden="true"><a href="http://localhost:8730/positive/" tabindex="-1">Positive tabindex</a></div>
+<div class="dropdown-panel" aria-hidden="true"><a href="http://localhost:8730/dropdown/">Dropdown link</a></div>
+<div class="slider-track" aria-hidden="true"><a href="http://localhost:8730/slide/">Slide link</a></div>
+<div id="faq-1" class="answer" aria-hidden="true"><a href="http://localhost:8730/faq/">FAQ link</a></div>
+<button type="button" aria-controls="faq-1" aria-expanded="false">Opening times question</button>
+<div id="promo-2" class="teaser" aria-hidden="true"><a href="http://localhost:8730/promo-2/">Second promotion</a></div>
+<a href="#promo-2">Show the second promotion</a>
+<div id="promo-3" class="teaser" aria-hidden="true"><a href="http://localhost:8730/promo-3/">Third promotion</a></div>
+<button type="button" data-toggle-target="#promo-3">Show the third promotion</button>
+<div class="teaser" aria-hidden="true" hidden><a href="http://localhost:8730/promo-4/">Fourth promotion</a></div>
+<div class="teaser" role="dialog" aria-hidden="true"><a href="http://localhost:8730/promo-5/">Fifth promotion</a></div>
+<nav aria-label="Footer"><ul class="links" aria-hidden="true"><li><a href="http://localhost:8730/in-nav/">In a nav</a></li></ul></nav>
+<div class="wrap" aria-hidden="true"><div class="menu-sub" aria-hidden="true"><a href="http://localhost:8730/nested/">Nested in a menu</a></div></div>
+<div class="wrap" aria-hidden="true"><div class="inner"><a tabindex="-1" href="http://localhost:8730/deep/">Deep link</a></div></div>
+</section>
+
+<section id="f17">
+<h2>Repeated form</h2>
+<form class="callback" action="http://localhost:8730/" method="post"><label for="phone">Phone</label> <input type="tel" id="phone" name="phone" aria-describedby="phone-hint"> <span id="phone-hint">We call back within a day.</span> <label for="qty">Loaves</label> <input type="number" id="qty" name="qty"> <button type="submit" id="add" aria-labelledby="add qty">Add</button></form>
+<form class="callback" action="http://localhost:8730/" method="post"><label for="phone-softglaze-a11y-2">Phone</label> <input type="tel" id="phone-softglaze-a11y-2" name="phone" aria-describedby="phone-hint"> <span id="phone-hint">We call back within a day.</span> <label for="qty-softglaze-a11y-2">Loaves</label> <input type="number" id="qty-softglaze-a11y-2" name="qty"> <button type="submit" id="add" aria-labelledby="add qty-softglaze-a11y-2">Add</button></form>
+<form class="callback" action="http://localhost:8730/" method="post"><label for="phone-softglaze-a11y-3">Phone</label> <input type="tel" id="phone-softglaze-a11y-3" name="phone"> <button type="submit">Call me</button></form>
+<form class="twice" action="http://localhost:8730/" method="post"><label for="dup">First</label> <input type="text" id="dup" name="a"> <input type="text" id="dup" name="b"></form>
+<form class="unlabelled" action="http://localhost:8730/" method="post"><label for="email">Email</label> <input type="email" id="email" name="email"></form>
+<form class="unlabelled" action="http://localhost:8730/" method="post"><input type="email" id="email" name="email" placeholder="Email"></form>
+<p><input type="text" id="loose" name="loose" aria-label="Loose field"> <input type="text" id="loose" name="loose2" aria-label="Another loose field"></p>
+<p id="note">First note.</p>
+<p id="note">Second note.</p>
+<button type="button" aria-describedby="phone">Phone help</button>
+</section>
+
+<section id="checks">
+<h2>Media, controls and tables</h2>
+<video src="http://localhost:8730/media/oven.webm" autoplay loop width="320" height="180"></video>
+<video src="http://localhost:8730/media/oven.webm" autoplay muted loop playsinline width="320" height="180"></video>
+<audio src="http://localhost:8730/media/bell.mp3" autoplay controls></audio>
+<video src="http://localhost:8730/media/oven.webm" autoplay muted controls width="320" height="180"></video>
+<video src="http://localhost:8730/media/oven.webm" controls width="320" height="180"></video>
+<div role="button" class="allergen-toggle">Show allergens</div>
+<span role="link">Go to the menu</span>
+<div role="tab" tabindex="0">Opening times</div>
+<div role="button" aria-disabled="true">Sold out</div>
+<a role="button">Order</a>
+<div class="tile" onclick="openTile()">Open the tile</div>
+<button type="button" onclick="openTile()">Open with a button</button>
+<ul><li role="menuitem" onclick="openTile()">Menu item</li></ul>
+<table class="hours"><tr><td>Day</td><td>Opens</td></tr><tr><td>Monday</td><td>7:00</td></tr></table>
+<table class="prices"><tr><th>Item</th><th>Price</th></tr><tr><td>Loaf</td><td>4</td></tr></table>
+<table class="layout" role="presentation"><tr><td>Left</td></tr><tr><td>Right</td></tr></table>
+<table class="single"><tr><td>One row</td></tr></table>
+<table class="outer"><tr><th>Week</th></tr><tr><td><table class="inner"><tr><td>a</td></tr><tr><td>b</td></tr><tr><td>c</td></tr></table></td></tr></table>
+</section>
+</main>
+</body>
+</html>

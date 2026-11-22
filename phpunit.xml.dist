@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!-- Test configuration (never shipped). Run through tools/run-tests.sh or tools/run-tests-docker.sh. -->
+<phpunit
+	bootstrap="tests/bootstrap.php"
+	backupGlobals="false"
+	colors="false"
+	cacheResult="false"
+	beStrictAboutOutputDuringTests="true"
+	>
+	<testsuites>
+		<testsuite name="tagmend">
+			<directory prefix="test-" suffix=".php">./tests/phpunit</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>

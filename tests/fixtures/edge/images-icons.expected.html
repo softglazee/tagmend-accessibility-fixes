@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Images and icons: edge cases</title>
+</head>
+<body>
+<main>
+<h1>Images and icons: edge cases</h1>
+
+<h2>Media Library alt text (F01, F02, F03)</h2>
+<p id="e01">Library alt, no alt attribute: <img alt="Butter croissant on a wooden board" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-croissant.jpg" class="wp-image-6" width="64" height="42"></p>
+<p id="e02"><a href="http://localhost:8730/order/">Order croissants <img alt="" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-croissant-300x197.jpg" class="wp-image-6" width="64" height="42"></a></p>
+<p id="e03"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cake.png" alt="Three-layer chocolate cake" class="wp-image-9" width="64" height="42"></p>
+<p id="e04"><a href="http://localhost:8730/menu/" aria-hidden="true" tabindex="-1"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cinnamon-rolls.jpg" alt="" class="wp-image-10" width="64" height="42"></a></p>
+<p id="e05"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-baguette.jpg" class="wp-image-7" role="presentation" width="64" height="42"></p>
+<p id="e06"><a aria-label="Example Bakery home page" href="http://localhost:8730/"><img alt="Three baguettes cooling on a rack" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-baguette.jpg" class="wp-image-7" width="64" height="42"></a></p>
+<p id="e07"><img alt="Round sourdough loaf with a floured crust" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-sourdough.jpg" width="60" height="40"></p>
+<p id="e08"><img alt="Cinnamon rolls in a baking tin" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cinnamon-rolls-300x200.jpg" width="64" height="42"></p>
+<p id="e09"><img alt="Three baguettes cooling on a rack" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-baguette.jpg" data-attachment-id="7" width="64" height="42"></p>
+<p id="e10"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-croissant.jpg" data-id="7" width="64" height="42"></p>
+<p id="e11"><img src="http://localhost:8730/wp-content/uploads/2026/10/bakery-oven.webm" class="wp-image-11" width="64" height="42"></p>
+<p id="e12"><img src="https://images.example.net/photos/bread-basket.jpg" width="64" height="42"></p>
+<p id="e13"><img src="http://localhost:8730/wp-content/uploads/2026/10/not-in-the-library.jpg" width="64" height="42"></p>
+<p id="e14"><button type="button">Add to basket <img alt="" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cake.png" class="wp-image-9" width="16" height="16"></button></p>
+<p id="e15"><a href="http://localhost:8730/shop/" aria-label="Shop"><img alt="" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cake.png" class="wp-image-9" width="16" height="16"></a></p>
+<noscript><img alt="Butter croissant on a wooden board" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-croissant.jpg" class="wp-image-6" width="64" height="42"></noscript>
+
+<h2>Alt text quality (R03)</h2>
+<p id="q01"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cake.png" alt="IMG_2041.JPG" width="64" height="42"></p>
+<p id="q02"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cake.png" alt="Image of a chocolate cake" width="64" height="42"></p>
+<p id="q03"><a href="http://localhost:8730/rolls/">Cinnamon rolls <img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cinnamon-rolls.jpg" alt="Cinnamon rolls" width="64" height="42"></a></p>
+<figure id="q04"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-baguette.jpg" alt="Three baguettes on a rack" width="64" height="42"><figcaption>Three baguettes on a rack.</figcaption></figure>
+<p id="q05"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cake.png" alt="20241031" width="64" height="42"></p>
+<p id="q06"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cake.png" alt="A three-layer chocolate cake on a white plate" width="64" height="42"></p>
+
+<h2>Icons (F07)</h2>
+<ul>
+<li id="i01"><a href="http://localhost:8730/contact/"><span aria-hidden="true" class="et-pb-icon">&#xe076;</span> Contact us</a></li>
+<li id="i02"><a href="http://localhost:8730/cart/"><i aria-hidden="true" class="fa fa-shopping-cart"></i> Cart</a></li>
+<li id="i03"><button type="button"><span aria-hidden="true">&#xe900;</span> Menu</button></li>
+<li id="i04"><a aria-label="Instagram" href="https://www.instagram.com/examplebakery"><i aria-hidden="true" class="fa fa-instagram"></i></a></li>
+<li id="i05"><a href="http://localhost:8730/search/"><svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16"><path d="M0 0h16v16H0z"/></svg> Search</a></li>
+<li id="i06"><a href="http://localhost:8730/hours/"><svg width="16" height="16" viewBox="0 0 16 16"><title>Opening hours</title><circle cx="8" cy="8" r="7"/></svg> today</a></li>
+<li id="i07"><a href="http://localhost:8730/map/">Find us <svg role="img" width="16" height="16" viewBox="0 0 16 16"><path d="M8 0l8 16H0z"/></svg></a></li>
+<li id="i08"><a href="http://localhost:8730/phone/"><svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16"><path d="M0 0h16v16H0z"/></svg> Call us</a></li>
+<li id="i09"><a href="http://localhost:8730/about/"><span class="icon-label">About us</span></a></li>
+<li id="i10"><button type="button"><span class="material-icons">search</span> Find</button></li>
+<li id="i11"><a href="http://localhost:8730/news/" title="News"><span aria-hidden="true" class="dashicons dashicons-megaphone"></span></a></li>
+<li id="i12"><a href="http://localhost:8730/gift/"><span class="icon-gift" aria-label="Gift"></span> Gift cards</a></li>
+<li id="i13"><a href="http://localhost:8730/blog/"><svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16"/> Blog</a></li>
+<li id="i14"><a aria-label="Facebook" href="https://www.facebook.com/examplebakery"><svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16"><path d="M0 0h16v16H0z"/></svg></a></li>
+</ul>
+<p id="i15"><svg role="img" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7"/></svg> Freshly baked</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<!--
+	Project ruleset for Tagmend - Accessibility Fixes (tagmend-accessibility-fixes),
+	filled in from 01-wporg-rules/templates/phpcs.xml.dist. Lives at the workspace
+	root, outside the plugin folder, so it never reaches the release ZIP (Plugin
+	Check fails any *.dist file as application_detected).
+-->
+<ruleset name="Tagmend - Accessibility Fixes">
+	<description>WordPress coding standards for the PHP in this plugin.</description>
+
+	<file>tagmend-accessibility-fixes</file>
+
+	<!-- Not ours to lint. -->
+	<exclude-pattern>/node_modules/*</exclude-pattern>
+	<exclude-pattern>/vendor/*</exclude-pattern>
+	<exclude-pattern>/lib/*</exclude-pattern>
+
+	<!-- Generated *.asset.php files are never hand-edited (none ship today). -->
+	<exclude-pattern>*.asset.php</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="ps"/>
+
+	<rule ref="WordPress"/>
+	<rule ref="WordPress-Docs"/>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="tagmend-accessibility-fixes"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="softglaze_a11y"/>
+				<element value="SOFTGLAZE_A11Y"/>
+				<element value="SoftGlaze\AccessibilityRepair"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- The PHP 7.4 floor is a gate, not a note. -->
+	<rule ref="PHPCompatibilityWP"/>
+	<config name="testVersion" value="7.4-"/>
+	<config name="minimum_wp_version" value="6.5"/>
+</ruleset>

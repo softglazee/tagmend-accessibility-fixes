@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Links, buttons and forms: edge cases</title>
+</head>
+<body>
+<header>
+<p id="l01"><a aria-label="Example Bakery home page" href="http://localhost:8730/" class="custom-logo-link" rel="home"><img src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-cake.png" alt="Three-layer chocolate cake" width="40" height="40"></a></p>
+<p id="l02"><a aria-label="Example Bakery home page" href="/"><svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16"><path d="M8 0l8 8H0z"/></svg></a></p>
+<p id="l03"><a href="http://localhost:8730/">Example Bakery</a></p>
+<nav id="primary-menu" class="main-navigation"><ul><li><a href="http://localhost:8730/menu/">Menu</a></li><li><a href="http://localhost:8730/about/">About us</a></li></ul></nav>
+<p id="b01"><button aria-label="Menu" class="nav-toggle" aria-controls="primary-menu" aria-expanded="false"><span class="bar"></span><span class="bar"></span></button></p>
+<p id="b02"><button aria-label="Menu" class="menu-toggle"><i aria-hidden="true" class="fa fa-bars"></i></button></p>
+<p id="b03"><button aria-label="Close" type="button" class="modal-close"><span aria-hidden="true">&times;</span></button></p>
+<p id="b04"><button aria-label="Close" type="button" class="dismiss-banner"><svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 12 12"><path d="M0 0l12 12M12 0L0 12"/></svg></button></p>
+<p id="b05"><button aria-label="Close" type="button"><i aria-hidden="true" class="fa fa-xmark"></i></button></p>
+<div id="b06"><div role="button" class="toggle-panel"></div></div>
+<p id="b07"><input type="button" value=""></p>
+<p id="b08"><button type="button" aria-label="Open the basket"><i aria-hidden="true" class="fa fa-shopping-basket"></i></button></p>
+</header>
+<main>
+<h1>Links, buttons and forms: edge cases</h1>
+
+<h2>Icon-only links (F05, F07)</h2>
+<ul class="social">
+<li id="s01"><a aria-label="Facebook" href="https://www.facebook.com/examplebakery"><i class="fab fa-facebook-f" aria-hidden="true"></i></a></li>
+<li id="s02"><a aria-label="Instagram" href="https://instagram.com/examplebakery"><svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7"/></svg></a></li>
+<li id="s03"><a aria-label="X (Twitter)" href="https://twitter.com/examplebakery"><span aria-hidden="true" class="et-pb-icon">&#xe094;</span></a></li>
+<li id="s04"><a aria-label="LinkedIn" href="https://go.example.net/linkedin"><i aria-hidden="true" class="fab fa-linkedin-in"></i></a></li>
+<li id="s05"><a aria-label="WhatsApp" href="https://wa.me/441234567890"><span aria-hidden="true" class="dashicons dashicons-whatsapp"></span></a></li>
+<li id="s06"><a aria-label="YouTube" href="https://www.youtube.com/@examplebakery" aria-labelledby="no-such-id"><i aria-hidden="true" class="fab fa-youtube"></i></a></li>
+<li id="s07"><a aria-label="Email orders@example.com" href="mailto:orders@example.com?subject=Cake%20order"><span aria-hidden="true" class="dashicons dashicons-email-alt"></span></a></li>
+<li id="s08"><a aria-label="Call +44 1234 567890" href="tel:+44%201234%20567890"><i aria-hidden="true" class="fa fa-phone"></i></a></li>
+<li id="s09"><a aria-label="Cart" href="http://localhost:8730/cart/" class="cart-contents"><i class="fa fa-shopping-cart" aria-hidden="true"></i></a></li>
+<li id="s10"><a href="http://localhost:8730/my-account/"><svg class="icon-user" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="5" r="3"/></svg></a></li>
+<li id="s11"><a href="http://localhost:8730/gallery/"><img alt="Butter croissant on a wooden board" src="http://localhost:8730/wp-content/uploads/2026/10/a11y-fx-croissant.jpg" class="wp-image-6" width="40" height="40"></a></li>
+<li id="s12"><a href="http://localhost:8730/hours/" title="Opening hours"><i aria-hidden="true" class="fa fa-clock"></i></a></li>
+<li id="s13"><a href="http://localhost:8730/about/">About us</a></li>
+<li id="s14"><a href="http://localhost:8730/menu/cinnamon-rolls/" aria-hidden="true" tabindex="-1"><i class="fa fa-camera"></i></a></li>
+</ul>
+
+<h2>Search forms (F06, F08)</h2>
+<form role="search" class="search-a" action="http://localhost:8730/" method="get"><input aria-label="Search products" type="search" name="s" placeholder="Search products"><button aria-label="Search" type="submit"><svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16"><circle cx="6" cy="6" r="5"/></svg></button></form>
+<form class="search-b" action="http://localhost:8730/" method="get"><label class="screen-reader-text" for="search-b-field">Search for:</label><input id="search-b-field" type="text" name="s"><button aria-label="Search" type="submit"><i aria-hidden="true" class="fa fa-search"></i></button></form>
+<form class="search-c" action="http://localhost:8730/" method="get"><input aria-label="Search" type="text" name="s"><input type="submit" value="Search"></form>
+
+<h2>Placeholder-only form (F08, R05, R06)</h2>
+<form class="wpcf7-form" action="http://localhost:8730/contact/" method="post">
+<p><input aria-label="Your name" type="text" name="your-name" placeholder="Your name"></p>
+<p><input aria-label="Email" type="email" name="your-email"></p>
+<p><textarea aria-label="Message" name="your-message"></textarea></p>
+<p><input aria-label="Quantity" type="number" name="quantity"></p>
+<p><select name="flavour"><option>Vanilla</option><option>Chocolate</option></select></p>
+<p><input type="checkbox" name="consent"></p>
+<p><input type="text" name="custom-17"></p>
+<p><input aria-label="&quot;&gt; Tom &amp; Jerry" type="text" name="note" placeholder="&quot;&gt;&lt;img src=x onerror=alert(1)&gt; Tom &amp; Jerry"></p>
+<p><label for="gift">Gift message</label><input type="text" id="gift" name="gift" placeholder="Happy birthday"></p>
+<p><input type="text" name="allergies" aria-label="Allergies"></p>
+<p><input type="submit" value="Send"></p>
+</form>
+
+<h2>Read more and ambiguous links (F19, R07)</h2>
+<article><h3>Autumn &amp; winter menu</h3><p>Pumpkin loaf is back.</p><a aria-label="Read more »: Autumn &amp; winter menu" href="http://localhost:8730/autumn/">Read more &raquo;</a></article>
+<article><h3>&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt; Stollen &amp;amp; more</h3><a aria-label="Continue reading: &quot;&gt; Stollen &amp; more" href="http://localhost:8730/stollen/">Continue reading</a></article>
+<article><h3>Sourdough classes</h3><a href="http://localhost:8730/classes/" aria-label="Learn more about sourdough classes">Learn more</a></article>
+<p><a href="http://localhost:8730/news/">Read more</a> about our news, or <a href="http://localhost:8730/contact/">click here</a> to write to us.</p>
+
+<h2>New-tab links (F21)</h2>
+<p id="t01"><a aria-describedby="softglaze-a11y-newtab-note" href="https://www.example.com/reviews/" target="_blank" rel="noopener">Reviews</a></p>
+<p id="t02"><a href="https://partner.example.org/" target="_blank" aria-describedby="partner-note softglaze-a11y-newtab-note">Our flour supplier</a> <span id="partner-note">External site</span></p>
+<p id="t03"><a href="https://maps.example.org/" target="_blank">Directions (opens in a new tab)</a></p>
+<p id="t04"><a href="https://www.example.org/menu.pdf" target="_BLANK" title="PDF, opens in a new window">Menu PDF</a></p>
+</main>
+<span id="softglaze-a11y-newtab-note" hidden>opens in a new tab</span>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Downloaded or installed by tools/setup-dev.sh
+/vendor/
+/dev/downloads/
+/dev/wp-core/
+/dev/wp-tests/
+
+# Build output of tools/build-zip.ps1
+/build/
+/dist/
+
+*.log
+.phpunit.result.cache
